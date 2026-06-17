@@ -67,6 +67,37 @@ cd book_loader
 pip install -e .
 ```
 
+### Optional: System Libraries for PDF Conversion
+
+PDF conversion (the `--to-pdf` option with the default `python` engine) uses
+[WeasyPrint](https://weasyprint.org/), which depends on native system libraries
+(Pango / GObject / cairo). The Python package is installed automatically, but
+these native libraries are **not** — you only need them if you actually convert
+to PDF. All other commands (`process` without `--to-pdf`, `auth`, `kobo`, ...)
+work without them.
+
+On macOS (Homebrew):
+
+```bash
+brew install pango gdk-pixbuf libffi
+```
+
+On Apple Silicon, Homebrew installs to `/opt/homebrew/lib`, which is not on the
+default dynamic-loader search path. Export this before running (add it to
+`~/.zshrc` to make it permanent):
+
+```bash
+export DYLD_FALLBACK_LIBRARY_PATH="/opt/homebrew/lib:$DYLD_FALLBACK_LIBRARY_PATH"
+```
+
+Verify the setup:
+
+```bash
+python -c "import weasyprint; print(weasyprint.__version__)"
+```
+
+For other platforms, see the [WeasyPrint installation guide](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation).
+
 ## Usage
 
 ### Quick Start

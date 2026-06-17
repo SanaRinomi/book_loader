@@ -6,7 +6,6 @@ import tempfile
 import shutil
 from pathlib import Path
 from ebooklib import epub
-from weasyprint import HTML, CSS
 from io import BytesIO
 
 
@@ -21,6 +20,11 @@ class ImprovedEpubToPdfConverter:
             epub_path: EPUB file path
             pdf_path: Output PDF path
         """
+        # Import weasyprint lazily: it dlopen()s native libraries (Pango/
+        # GObject/cairo) at import time, which would otherwise break unrelated
+        # CLI commands on systems without those libraries installed.
+        from weasyprint import HTML, CSS
+
         # Read EPUB
         book = epub.read_epub(str(epub_path))
 
