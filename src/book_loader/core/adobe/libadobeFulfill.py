@@ -15,6 +15,8 @@ import time
 #@@CALIBRE_COMPAT_CODE@@
 
 from .libadobe import addNonce, sign_node, get_cert_from_pkcs12, sendRequestDocu, sendRequestDocuRC, sendHTTPRequest
+from .libadobe import is_verbose, vprint, report
+from ...utils.redact import redact_url, redact_text, redact_header
 from .libadobe import get_devkey_path, get_device_path, get_activation_xml_path
 from .libadobe import VAR_VER_SUPP_VERSIONS, VAR_VER_SUPP_CONFIG_NAMES, VAR_VER_HOBBES_VERSIONS
 from .libadobe import VAR_VER_BUILD_IDS, VAR_VER_USE_DIFFERENT_NOTIFICATION_XML_ORDER
@@ -333,7 +335,7 @@ def buildRights(license_token_node):
 
 def fulfill(acsm_file, do_notify = False):
 
-    verbose_logging = False
+    verbose_logging = is_verbose()
     try: 
         import calibre_plugins.deacsm.prefs as prefs
         deacsmprefs = prefs.ACSMInput_Prefs()
@@ -355,10 +357,29 @@ def fulfill(acsm_file, do_notify = False):
     if pkcs12 is None or len(pkcs12) == 0:
         return False, "Activation missing"
 
-    try: 
+    try:
         acsmxml = etree.parse(acsm_file)
-    except: 
+    except:
         return False, "ACSM not found or invalid"
+
+    # Checks from libgourou: the distributor may have sent an error document instead of a
+    # fulfillment token, and an expired ACSM usually can't be fulfilled any more.
+    acsm_root = acsmxml.getroot()
+    if etree.QName(acsm_root).localname == "error":
+        return False, "The ACSM file is an error message from the distributor: %s" % acsm_root.get("data", "(no details)")
+
+    expiration = acsm_root.findtext("{http://ns.adobe.com/adept}expiration")
+    if expiration:
+        try:
+            from datetime import datetime, timezone
+            expires = datetime.fromisoformat(expiration.strip().replace("Z", "+00:00"))
+            if expires.tzinfo is None:
+                expires = expires.replace(tzinfo=timezone.utc)
+            if expires < datetime.now(timezone.utc):
+                report("warning", message="ACSM file expired (%s), fulfillment may fail. "
+                       "Download a fresh ACSM from the bookstore if it does." % expiration.strip())
+        except ValueError:
+            pass
 
     #print(etree.tostring(acsmxml, encoding="utf-8", pretty_print=True, xml_declaration=False).decode("utf-8"))
 
@@ -387,7 +408,7 @@ def fulfill(acsm_file, do_notify = False):
 
     if verbose_logging:
         print("Fulfill request:")
-        print(fulfill_request)
+        print(redact_text(fulfill_request))
 
     fulfill_request_xml = etree.fromstring(fulfill_request)
     # Sign the request:
@@ -416,6 +437,7 @@ def fulfill(acsm_file, do_notify = False):
         return False, "OperatorURL missing in ACSM"
 
     fulfillURL = operatorURL + "/Fulfill"
+    report("fulfill", url=fulfillURL)
 
     ret = operatorAuth(fulfillURL)
     if (ret is not None):
@@ -450,9 +472,10 @@ def fulfill(acsm_file, do_notify = False):
         else: 
             return False, "Looks like there's been an error during Fulfillment: %s" % replyData
 
+    report("fulfilled")
     if verbose_logging:
         print("fulfillmentResult:")
-        print(replyData)
+        print(redact_text(replyData))
 
     adobe_fulfill_response = etree.fromstring(replyData)
     NSMAP = { "adept" : "http://ns.adobe.com/adept" }
@@ -463,11 +486,13 @@ def fulfill(acsm_file, do_notify = False):
     if adept_ns:
         if do_notify:
             print("Notifying server ...")
+            report("notify_start")
             success, response = performFulfillmentNotification(adobe_fulfill_response)
             if not success: 
                 print("Some errors occurred during notify: ")
                 print(response)
                 print("The book was probably still downloaded correctly.")
+                report("warning", message="Fulfilment notification failed; the book can usually still be downloaded.")
         else:
             print("Not notifying any server since that was disabled.")
     else: 
@@ -606,7 +631,7 @@ def addLoanRecordToConfigFile(new_loan_record):
 def tryReturnBook(bookData): 
 
 
-    verbose_logging = False
+    verbose_logging = is_verbose()
     try: 
         import calibre_plugins.deacsm.prefs as prefs
         deacsmprefs = prefs.ACSMInput_Prefs()
@@ -646,34 +671,34 @@ def tryReturnBook(bookData):
 
     etree.SubElement(full_text_xml, etree.QName(NSMAP["adept"], "signature")).text = signature
 
-    print("Notifying loan return server %s" % (operatorURL + "/LoanReturn"))
+    print("Notifying loan return server %s" % (redact_url(operatorURL + "/LoanReturn")))
     doc_send = "<?xml version=\"1.0\"?>\n" + etree.tostring(full_text_xml, encoding="utf-8", pretty_print=True, xml_declaration=False).decode("utf-8")
     if verbose_logging:
-        print(doc_send)
+        print(redact_text(doc_send))
 
 
     retval = sendRequestDocu(doc_send, operatorURL + "/LoanReturn").decode("utf-8")
 
     if "<error" in retval: 
-        print("Loan return failed: %s" % (retval))
+        print("Loan return failed: %s" % (redact_text(retval)))
         return False, retval
     elif "<envelope" in retval: 
         print("Loan return successful")
         if verbose_logging:
-            print(retval)
+            print(redact_text(retval))
         bl, txt = performFulfillmentNotification(etree.fromstring(retval), True, user=user, device=device)
         if not bl: 
             print("Error while notifying of book return. Book's probably still been returned properly.")
         return True, retval
     else: 
-        print("Invalid loan return response: %s" % (retval))
+        print("Invalid loan return response: %s" % (redact_text(retval)))
         return False, retval
 
 
 
 def performFulfillmentNotification(fulfillmentResultToken, forceOptional = False, user = None, device = None):
 
-    verbose_logging = False
+    verbose_logging = is_verbose()
     try: 
         import calibre_plugins.deacsm.prefs as prefs
         deacsmprefs = prefs.ACSMInput_Prefs()
@@ -706,6 +731,7 @@ def performFulfillmentNotification(fulfillmentResultToken, forceOptional = False
 
     if len(notifiers) == 0:
         print("<notify> tag not found. Guess nobody wants to be notified.")
+        report("info", message="Not requested.", end="")
         #print(etree.tostring(fulfillmentResultToken, encoding="utf-8", pretty_print=True, xml_declaration=False).decode("utf-8"))
         return True, ""
     
@@ -722,9 +748,10 @@ def performFulfillmentNotification(fulfillmentResultToken, forceOptional = False
 
         if element.get("critical", "yes") == "no":
             critical = False
-            print("Notifying optional server %s" % (url))
+            print("Notifying optional server %s" % (redact_url(url)))
         else: 
-            print("Notifying server %s" % (url))
+            print("Notifying server %s" % (redact_url(url)))
+        report("notify", url=url)
         
 
         if (user is None):
@@ -801,7 +828,7 @@ def performFulfillmentNotification(fulfillmentResultToken, forceOptional = False
         # Debug: Print notify request
         if (verbose_logging):
             print("Notify payload XML:")
-            print(doc_send)
+            print(redact_text(doc_send))
 
         try: 
             code, msg = sendRequestDocuRC(doc_send, url)
@@ -811,6 +838,7 @@ def performFulfillmentNotification(fulfillmentResultToken, forceOptional = False
                 import traceback
                 traceback.print_exc()
                 print("Continuing execution ...")
+                report("notify_result", ok=False)
                 continue
             else:
                 print("Error during critical notification:")
@@ -823,20 +851,24 @@ def performFulfillmentNotification(fulfillmentResultToken, forceOptional = False
 
         if verbose_logging:
             print("MSG:")
-            print(msg)
+            print(redact_text(msg))
 
         if "<error" in msg: 
-            print("Fulfillment notification error: %s" % (msg))
+            print("Fulfillment notification error: %s" % (redact_text(msg)))
+            report("notify_result", ok=False)
             errmsg += "ERROR\n" + url + "\n" + msg + "\n\n"
             if critical:
                 errmsg_crit += "ERROR\n" + url + "\n" + msg + "\n\n"
 
         elif "<success" in msg: 
             print("Fulfillment notification successful.")
+            report("notify_result", ok=True)
         elif code == 204:
             print("Fulfillment notification successful (204).")
+            report("notify_result", ok=True)
         else: 
-            print("Weird Fulfillment Notification response: %s" % (msg))
+            print("Weird Fulfillment Notification response: %s" % (redact_text(msg)))
+            report("notify_result", ok=False)
             errmsg += "ERROR\n" + url + "\n" + msg + "\n\n"
             if critical:
                 errmsg_crit += "ERROR\n" + url + "\n" + msg + "\n\n"
@@ -917,6 +949,55 @@ def fetchLicenseServiceCertificate(licenseURL, operatorURL):
     return True, "Done"
 
 
+def parse_fulfillment(replyData):
+    """
+    從 fulfill() 的回應取出下載與授權所需的資料
+
+    Returns a plain dict (JSON-serializable, so it can be saved and reused when the
+    download has to be done by hand):
+        download_url, rights_xml, book_name, resource, format
+
+    download_url is None when the response has no <src> (ACSM with download type 'auth').
+    """
+    adobe_fulfill_response = etree.fromstring(replyData)
+    adNS = lambda tag: '{%s}%s' % ('http://ns.adobe.com/adept', tag)
+    adDC = lambda tag: '{%s}%s' % ('http://purl.org/dc/elements/1.1/', tag)
+
+    item_info = adobe_fulfill_response.find("./%s/%s" % (adNS("fulfillmentResult"), adNS("resourceItemInfo")))
+    if item_info is None:
+        raise RuntimeError("The fulfillment response contains no resourceItemInfo")
+
+    # 取得下載 URL
+    download_url = (item_info.findtext(adNS("src")) or "").strip() or None
+
+    # 建立 rights.xml
+    license_token_node = item_info.find(adNS("licenseToken"))
+    if license_token_node is None:
+        raise RuntimeError("The fulfillment response contains no license token")
+    rights_xml_str = buildRights(license_token_node)
+    if rights_xml_str is None:
+        raise RuntimeError("Building rights.xml failed")
+
+    # 取得書名
+    book_name = "Book"
+    metadata_format = ""
+    metadata_node = item_info.find(adNS("metadata"))
+    if metadata_node is not None:
+        title = metadata_node.findtext(adDC("title")) or ""
+        # 清理檔名中的非法字元
+        book_name = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).strip() or "Book"
+        # Metadata format is the fallback for type detection (libgourou uses it the same way).
+        metadata_format = metadata_node.findtext(adDC("format")) or ""
+
+    return {
+        "download_url": download_url,
+        "rights_xml": rights_xml_str,
+        "book_name": book_name,
+        "resource": license_token_node.findtext(adNS("resource")),
+        "format": metadata_format,
+    }
+
+
 def download(replyData, output_dir):
     """
     下載並處理已履行的電子書
@@ -926,87 +1007,184 @@ def download(replyData, output_dir):
         output_dir: 輸出目錄
 
     Returns:
-        下載的檔案路徑（str）或 None（如果失敗）
+        下載的檔案路徑（str）
+    """
+    return download_book(parse_fulfillment(replyData), output_dir)
+
+
+def download_book(info, output_dir):
+    """
+    Download the book described by parse_fulfillment() and add its license.
+
+    Raises RuntimeError when the download fails; the fulfillment itself is still valid,
+    so the caller can save `info` and let the user download the file by hand.
     """
     import time
-    import shutil
-    import zipfile
     import os
+    from urllib.error import HTTPError
     from .libadobe import sendHTTPRequest_DL2FILE
 
-    adobe_fulfill_response = etree.fromstring(replyData)
-    NSMAP = { "adept" : "http://ns.adobe.com/adept" }
-    adNS = lambda tag: '{%s}%s' % ('http://ns.adobe.com/adept', tag)
-    adDC = lambda tag: '{%s}%s' % ('http://purl.org/dc/elements/1.1/', tag)
-
-    # 取得下載 URL
-    download_url = adobe_fulfill_response.find("./%s/%s/%s" % (adNS("fulfillmentResult"), adNS("resourceItemInfo"), adNS("src"))).text
-    license_token_node = adobe_fulfill_response.find("./%s/%s/%s" % (adNS("fulfillmentResult"), adNS("resourceItemInfo"), adNS("licenseToken")))
-
-    # 建立 rights.xml
-    rights_xml_str = buildRights(license_token_node)
-    if rights_xml_str is None:
-        print("Building rights.xml failed!")
-        return None
-
-    # 取得書名
-    book_name = "Book"
-    try:
-        metadata_node = adobe_fulfill_response.find("./%s/%s/%s" % (adNS("fulfillmentResult"), adNS("resourceItemInfo"), adNS("metadata")))
-        book_name = metadata_node.find("./%s" % (adDC("title"))).text
-        # 清理檔名中的非法字元
-        book_name = "".join(c for c in book_name if c.isalnum() or c in (' ', '-', '_')).strip()
-    except:
-        pass
-
-    print(f"Downloading from: {download_url}")
+    download_url = info["download_url"]
+    if not download_url:
+        # Same situation the Calibre plugin reports: no <src>, typically an ACSM with download type 'auth'.
+        raise RuntimeError(
+            "The fulfillment response contains no download URL (<src>). This is probably an ACSM "
+            "with download type 'auth', which is not supported. Download the book once through "
+            "Adobe Digital Editions instead."
+        )
 
     # 確保輸出目錄存在
     os.makedirs(output_dir, exist_ok=True)
 
     # 下載到臨時檔案
-    filename_tmp = os.path.join(output_dir, book_name + ".tmp")
+    filename_tmp = os.path.join(output_dir, info["book_name"] + ".tmp")
 
     dl_start_time = int(time.time() * 1000)
-    ret = sendHTTPRequest_DL2FILE(download_url, filename_tmp)
+    response_headers = {}
+    try:
+        ret = sendHTTPRequest_DL2FILE(download_url, filename_tmp, response_headers)
+    except HTTPError as err:
+        if err.code == 429:
+            # Save what the server actually sent back so the cause can be diagnosed.
+            dump_path = _save_error_body(output_dir, "download_error_429.html", getattr(err, "body", b""))
+            vprint("Final URL: %s" % redact_url(err.geturl()))
+            for h in ("Retry-After", "Content-Type", "Server"):
+                if err.headers and err.headers.get(h):
+                    vprint("%s: %s" % (h, redact_header(h, err.headers.get(h))))
+            saved = " Server response (redacted) saved to: %s" % dump_path if dump_path else ""
+
+            if getattr(err, "is_bot_block", False):
+                raise RuntimeError(
+                    "Google blocked the download as automated traffic (HTTP 429, 'unusual traffic'). "
+                    "This block is tied to your IP address, not the book. Retrying from this network "
+                    "only extends it." + saved
+                ) from err
+            raise RuntimeError(
+                "Download server rate-limited the request (HTTP 429: Too Many Requests) "
+                "even after retrying." + saved
+            ) from err
+        raise RuntimeError("Download failed with HTTP %d" % err.code) from err
     dl_end_time = int(time.time() * 1000)
-    print("Download took %d milliseconds" % (dl_end_time - dl_start_time))
+    vprint("Download took %d milliseconds" % (dl_end_time - dl_start_time))
 
     if ret != 200:
-        print("Download failed with error %d" % (ret))
-        return None
+        raise RuntimeError("Download failed with HTTP %d" % ret)
+
+    content_type = ""
+    for name, value in response_headers.items():
+        if name.lower() == "content-type":
+            content_type = value.lower()
+
+    return apply_license(filename_tmp, info, output_dir, content_type,
+                         source="The download server returned")
+
+
+def apply_license(book_file, info, output_dir, content_type="", source="The file is"):
+    """
+    Detect the type of an encrypted book file and add the license from `info` to it.
+
+    `book_file` is consumed (moved or deleted). Returns the path of the licensed file,
+    named after the book, in `output_dir`. `source` starts the error message used
+    when the file turns out to be a web page.
+    """
+    import shutil
+    import zipfile
+    import os
+    from .libpdf import patch_drm_into_pdf
+
+    book_name = info["book_name"]
+    rights_xml_str = info["rights_xml"]
 
     # 檢測檔案類型
-    with open(filename_tmp, "rb") as f:
-        book_content = f.read(10)
+    with open(book_file, "rb") as f:
+        book_content = f.read(1024)
+
+    head = book_content.lstrip().lower()
+    is_html = "html" in content_type or head.startswith(b"<!doctype html") or head.startswith(b"<html")
 
     filetype = ".bin"
     if book_content.startswith(b"PK"):
         print("That's a ZIP file -> EPUB")
         filetype = ".epub"
-    elif book_content.startswith(b"%PDF"):
+    elif book_content.lstrip().startswith(b"%PDF"):
         print("That's a PDF file")
         filetype = ".pdf"
+    elif is_html:
+        # Distributors sometimes answer HTTP 200 with an HTML error / login / captcha page.
+        # Checked before the metadata fallback below, which would otherwise call it a PDF.
+        with open(book_file, "rb") as f:
+            body = f.read(256 * 1024)
+        os.remove(book_file)
+        dump_path = _save_error_body(output_dir, "download_error.html", body)
+        raise RuntimeError(
+            "%s a web page instead of the book (Content-Type: %s). "
+            "The link may have expired or the distributor may require a browser session.%s"
+            % (source, content_type or "unknown",
+               " Page (redacted) saved to: %s" % dump_path if dump_path else "")
+        )
+    elif "application/pdf" in content_type or "application/pdf" in (info.get("format") or ""):
+        # Some PDFs have leading junk before the header; trust the server / ACSM metadata.
+        print("Server says this is a PDF file")
+        filetype = ".pdf"
+
+    if filetype == ".bin":
+        os.remove(book_file)
+        raise RuntimeError("The book file is neither EPUB nor PDF (Content-Type: %s)" % (content_type or "unknown"))
 
     filename = os.path.join(output_dir, book_name + filetype)
-    shutil.move(filename_tmp, filename)
 
     # 處理 EPUB：加入 rights.xml
     if filetype == ".epub":
-        zf = zipfile.ZipFile(filename, "a")
-        zf.writestr("META-INF/rights.xml", rights_xml_str)
-        zf.close()
+        shutil.move(book_file, filename)
+        with zipfile.ZipFile(filename, "a") as zf:
+            if "META-INF/rights.xml" in zf.namelist():
+                # Already licensed (e.g. a file saved by ADE); a second entry would be ambiguous.
+                print("EPUB already contains META-INF/rights.xml, keeping it")
+            else:
+                zf.writestr("META-INF/rights.xml", rights_xml_str)
         print("File successfully fulfilled to " + filename)
         return filename
 
-    # 處理 PDF
-    elif filetype == ".pdf":
-        print("Successfully downloaded PDF")
-        # PDF 已經包含加密資訊，直接返回
-        return filename
-    else:
-        print("Error: Weird filetype")
+    # 處理 PDF：the downloaded PDF has an EBX_HANDLER but no license. Like ADE, the
+    # Calibre plugin and libgourou, append an incremental update that adds
+    # ADEPT_LICENSE / EBX_BOOKID to it, otherwise ineptpdf has no key to decrypt with.
+    resource = info.get("resource")
+    if not resource:
+        os.remove(book_file)
+        raise RuntimeError("PDF license token has no resource ID, can't add the license to the PDF")
+
+    print("Downloaded PDF, adding encryption config ...")
+    patched_tmp = os.path.join(output_dir, book_name + ".patched.tmp")
+    try:
+        # patch_drm_into_pdf returns False on failure and None on success.
+        ok = patch_drm_into_pdf(book_file, rights_xml_str, patched_tmp, resource) is not False
+    except Exception as err:
+        print("PDF patching raised: %s" % err)
+        ok = False
+    if not ok or not os.path.exists(patched_tmp):
+        raise RuntimeError(
+            "Could not add the license to the PDF (EBX_HANDLER / Encrypt entry not found). "
+            "The unpatched file is kept at: %s" % book_file
+        )
+    shutil.move(patched_tmp, filename)
+    try:
+        os.remove(book_file)
+    except OSError:
+        pass
+    print("File successfully fulfilled to " + filename)
+    return filename
+
+
+def _save_error_body(output_dir, name, body):
+    # Save a redacted copy of an error response for diagnosis; returns the path or None.
+    import os
+    dump_path = os.path.join(output_dir, name)
+    try:
+        with open(dump_path, "wb") as f:
+            f.write(redact_text(body.decode("utf-8", "replace")).encode("utf-8"))
+    except OSError:
         return None
+    return dump_path
 
 
 

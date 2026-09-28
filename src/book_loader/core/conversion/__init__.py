@@ -32,9 +32,7 @@ class ConversionEngine:
             epub_path: EPUB file path
             pdf_path: Output PDF path
         """
-        print(f"Converting using {self.engine} engine...")
         self.converter.convert(epub_path, pdf_path)
-        print(f"✓ Conversion complete: {pdf_path}")
 
 
 __all__ = ["ConversionEngine", "EpubToPdfConverter", "CalibreConverter"]

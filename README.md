@@ -110,6 +110,20 @@ book-loader process book.acsm
 book-loader process book.acsm -o ~/Books/
 ```
 
+#### When the Download Is Blocked
+
+Some stores (notably Google Play Books) sometimes block the automatic download with a CAPTCHA ("unusual traffic", HTTP 429). The fulfillment has already succeeded at that point, so book-loader saves the license and doesn't quit: it shows the download link (and offers to open it in your browser), then waits. Download the (still encrypted) book in the browser, completing the check if asked, and enter the file at the prompt: a path, a file name in your Downloads folder, or just Enter to pick the newest EPUB/PDF there. book-loader then finishes the book as usual.
+
+If you stop at the prompt, or book-loader isn't running in an interactive terminal, it writes a `<title> - download link.html` page instead. Open it in a browser, download the book, then finish with:
+
+```bash
+book-loader process book.acsm --downloaded-file ~/Downloads/book.epub
+# or, for a PDF book
+book-loader process book.acsm --downloaded-file ~/Downloads/book.pdf
+```
+
+The book can be an EPUB or a PDF. book-loader detects which from the file's contents, so it doesn't matter if the browser saved it under the wrong extension. The download link is personal to your purchase; don't share the page. It is deleted once the book is processed.
+
 ### Authorization Management
 
 #### Create New Authorization

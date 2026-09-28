@@ -79,6 +79,20 @@ book-loader process book.acsm
 book-loader process book.acsm -o ~/Books/
 ```
 
+#### 下載被封鎖時
+
+部分書店（特別是 Google Play 圖書）有時會以 CAPTCHA（「異常流量」、HTTP 429）封鎖自動下載。此時履行（fulfillment）其實已經成功，book-loader 會儲存授權且不會結束：它會顯示下載連結（並詢問是否用瀏覽器開啟），然後等待。用瀏覽器下載（仍加密的）電子書（如有驗證請先完成），再於提示處輸入檔案：路徑、「下載」資料夾中的檔名，或直接按 Enter 選用其中最新的 EPUB/PDF。book-loader 接著會照常完成處理。
+
+若在提示處選擇結束，或 book-loader 不是在互動式終端機中執行，則會改為產生一個 `<書名> - download link.html` 頁面。用瀏覽器開啟它、下載電子書，再執行：
+
+```bash
+book-loader process book.acsm --downloaded-file ~/Downloads/book.epub
+# PDF 書籍則為
+book-loader process book.acsm --downloaded-file ~/Downloads/book.pdf
+```
+
+電子書可能是 EPUB 或 PDF。book-loader 會依檔案內容判斷格式，即使瀏覽器存檔時用錯副檔名也沒關係。下載連結專屬於你的購買紀錄，請勿分享該頁面。書籍處理完成後頁面會自動刪除。
+
 ### 授權管理
 
 #### 建立新授權

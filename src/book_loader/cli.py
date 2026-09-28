@@ -3,6 +3,8 @@ Command-line interface.
 """
 
 import sys
+import time
+import webbrowser
 import click
 import tarfile
 from datetime import datetime
@@ -12,7 +14,8 @@ from typing import Optional
 from importlib.metadata import version, PackageNotFoundError
 from .core.workflow import BookLoader
 from .utils.config import Config
-from .utils.errors import BookLoaderError
+from .utils.console import StepReporter
+from .utils.errors import BookLoaderError, ManualDownloadRequired
 
 
 class ConflictAction(Enum):
@@ -165,7 +168,21 @@ def cli():
     help="PDF conversion engine: python (default) or calibre",
 )
 @click.option("--keep-encrypted", is_flag=True, help="Keep encrypted file")
-def process(acsm_file, output, auth_dir, optimize, to_pdf, convert_engine, keep_encrypted):
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Show detailed protocol and HTTP logs (identifying data is redacted)",
+)
+@click.option(
+    "--downloaded-file",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Encrypted EPUB or PDF you downloaded yourself (e.g. in a browser after a blocked download)",
+)
+def process(
+    acsm_file, output, auth_dir, optimize, to_pdf, convert_engine, keep_encrypted, verbose,
+    downloaded_file,
+):
     """Process ACSM file and output DRM-free EPUB or PDF
 
     Examples:
@@ -175,7 +192,17 @@ def process(acsm_file, output, auth_dir, optimize, to_pdf, convert_engine, keep_
         book-loader process book.acsm -o ~/Books/
 
         book-loader process book.acsm --optimize --to-pdf
+
+        book-loader process book.acsm --verbose
+
+        book-loader process book.acsm --downloaded-file ~/Downloads/book.epub
+
+    If the download is blocked (e.g. by Google's bot check), the download link is
+    shown and book-loader waits for you to download the book in a browser.
     """
+    reporter = StepReporter(BookLoader.step_count(to_pdf), verbose)
+    # Only prompt when someone is there to answer; otherwise fail with instructions.
+    prompt = _ManualDownloadPrompt(reporter) if sys.stdin.isatty() else None
     try:
         config = Config(auth_dir=auth_dir)
         loader = BookLoader(config)
@@ -190,16 +217,115 @@ def process(acsm_file, output, auth_dir, optimize, to_pdf, convert_engine, keep_
             to_pdf=to_pdf,
             convert_engine=convert_engine,
             keep_encrypted=keep_encrypted,
+            verbose=verbose,
+            downloaded_file=downloaded_file,
+            reporter=reporter,
+            manual_download=prompt,
         )
 
         click.secho(f"\n✓ Success! Output file: {result_path}", fg="green", bold=True)
 
+    except ManualDownloadRequired as e:
+        if prompt and prompt.asked:
+            # The reason and the link were shown already.
+            click.echo(
+                "\nStopped. The license is saved; to finish later, download the book and run:\n"
+                f'  book-loader process "{acsm_file}" --downloaded-file <path to that file>'
+            )
+        else:
+            _step_error(reporter, e)
+        sys.exit(1)
     except BookLoaderError as e:
-        click.secho(f"\n✗ Error: {e}", fg="red", err=True)
+        _step_error(reporter, e)
         sys.exit(1)
     except Exception as e:
-        click.secho(f"\n✗ Unexpected error: {e}", fg="red", err=True)
+        _step_error(reporter, f"Unexpected error: {e}")
         sys.exit(1)
+
+
+def _step_error(reporter: StepReporter, message) -> None:
+    """Close the status line and print "[ERROR n/total] message"."""
+    reporter.fail()
+    where = f" {reporter.current}/{reporter.total}" if reporter.current else ""
+    click.secho(f"\n[ERROR{where}] {message}", fg="red", err=True)
+
+
+class _ManualDownloadPrompt:
+    """
+    Handles a blocked download without quitting: shows the download link, then
+    asks for the file the user downloaded in their browser.
+    """
+
+    DOWNLOADS = Path.home() / "Downloads"
+
+    def __init__(self, reporter: StepReporter):
+        self.reporter = reporter
+        self.asked = False
+        self.since = None  # files in Downloads newer than this are candidates
+
+    def __call__(self, blocked, last_error) -> Optional[Path]:
+        if last_error is not None:
+            _step_error(self.reporter, last_error)
+            click.echo("Try again with the book file (not the check page).")
+        else:
+            self._show_link(blocked)
+        self.asked = True
+
+        while True:
+            answer = click.prompt(
+                "\nDownloaded file (path or name; Enter = newest EPUB/PDF in Downloads; q = quit)",
+                default="",
+                show_default=False,
+            )
+            answer = answer.strip().strip("\"'")
+            if answer.lower() in ("q", "quit"):
+                return None
+            path = self._find(answer)
+            if path is None:
+                if answer:
+                    click.echo(f"Not found: {answer}")
+                else:
+                    click.echo(f"No new EPUB or PDF in {self.DOWNLOADS} yet.")
+                continue
+            if answer or click.confirm(f"Use {path.name}?", default=True):
+                click.echo()
+                return path
+
+    def _show_link(self, blocked) -> None:
+        _step_error(self.reporter, blocked.reason)
+        click.echo(
+            "\nThe license is saved, so the book can still be finished here:\n"
+            "  1. Open this link in your browser and download the book (complete the check if asked):\n"
+            f"     {blocked.url}\n"
+            "     This link belongs to your purchase, don't share it.\n"
+            "  2. Enter the downloaded file below."
+        )
+        # Allow for a download started a little before the prompt appeared.
+        self.since = time.time() - 60
+        if click.confirm("\nOpen the link in your browser now?", default=True):
+            # webbrowser, not click.launch: on Windows click passes the URL through cmd, which splits it at '&'.
+            if not webbrowser.open(blocked.url):
+                click.echo(f"Could not open a browser; the link is also in {blocked.link_file}")
+
+    def _find(self, answer: str) -> Optional[Path]:
+        if not answer:
+            return self._newest_download()
+        path = Path(answer).expanduser()
+        candidates = [path, self.DOWNLOADS / path]
+        if not path.suffix:
+            candidates += [self.DOWNLOADS / (answer + ext) for ext in (".epub", ".pdf")]
+        return next((c for c in candidates if c.is_file()), None)
+
+    def _newest_download(self) -> Optional[Path]:
+        try:
+            books = [
+                p
+                for p in self.DOWNLOADS.iterdir()
+                if p.suffix.lower() in (".epub", ".pdf") and p.is_file() and p.stat().st_mtime >= self.since
+            ]
+        except OSError:
+            return None
+        return max(books, key=lambda p: p.stat().st_mtime, default=None)
 
 
 @cli.group()
@@ -514,6 +640,7 @@ def convert(epub_file, output, convert_engine):
             pdf_path = epub_file.with_suffix(".pdf")
 
         # Convert
+        click.echo(f"Converting using {convert_engine} engine...")
         engine = ConversionEngine(engine=convert_engine)
         engine.convert_epub_to_pdf(epub_file, pdf_path)
 

@@ -3,6 +3,7 @@ Adobe account authorization management.
 """
 
 import base64
+import shutil
 from pathlib import Path
 from lxml import etree
 
@@ -87,24 +88,7 @@ class AdobeAccount:
 
     def authorize_anonymous(self) -> None:
         """Execute anonymous authorization (default method)."""
-        try:
-            # Set authorization directory path
-            from . import libadobe
-            from . import libadobeAccount
-
-            libadobe.update_account_path(str(self.auth_dir))
-
-            # Execute five-step authorization process
-            libadobe.createDeviceKeyFile()
-            libadobeAccount.createDeviceFile(randomSerial=True, useVersionIndex=1)
-            libadobeAccount.createUser(useVersionIndex=1)
-            success = libadobeAccount.signIn("anonymous", "", "")
-            if not success:
-                raise AuthorizationError("Anonymous authorization failed")
-            libadobeAccount.activateDevice(useVersionIndex=1)
-
-        except Exception as e:
-            raise AuthorizationError(f"Anonymous authorization failed: {e}")
+        self._authorize("anonymous", "", "", "Anonymous authorization failed")
 
     def authorize_adobe_id(self, email: str, password: str) -> None:
         """
@@ -114,6 +98,19 @@ class AdobeAccount:
             email: Adobe ID account (email)
             password: Adobe ID password
         """
+        self._authorize("AdobeID", email, password, "Adobe ID authorization failed")
+
+    def _authorize(self, method: str, email: str, password: str, failure: str) -> None:
+        """Run the five-step authorization; each libadobeAccount step returns (ok, message)."""
+        try:
+            self._run_authorization(method, email, password, failure)
+        except Exception:
+            # Don't leave a half-written authorization that is_authorized() would accept.
+            for file in [self.activation_xml, self.device_xml, self.devicesalt]:
+                file.unlink(missing_ok=True)
+            raise
+
+    def _run_authorization(self, method: str, email: str, password: str, failure: str) -> None:
         try:
             # Set authorization directory path
             from . import libadobe
@@ -121,17 +118,23 @@ class AdobeAccount:
 
             libadobe.update_account_path(str(self.auth_dir))
 
-            # Execute five-step authorization process
             libadobe.createDeviceKeyFile()
-            libadobeAccount.createDeviceFile(randomSerial=True, useVersionIndex=1)
-            libadobeAccount.createUser(useVersionIndex=1)
-            success = libadobeAccount.signIn("AdobeID", email, password)
-            if not success:
-                raise AuthorizationError("Adobe ID authorization failed: Please check credentials")
-            libadobeAccount.activateDevice(useVersionIndex=1)
+            steps = [
+                ("creating the device", lambda: libadobeAccount.createDeviceFile(randomSerial=True, useVersionIndex=1)),
+                ("creating the user", lambda: libadobeAccount.createUser(useVersionIndex=1)),
+                ("signing in", lambda: libadobeAccount.signIn(method, email, password)),
+                ("activating the device", lambda: libadobeAccount.activateDevice(useVersionIndex=1)),
+            ]
+            for name, run in steps:
+                result = run()
+                ok, message = (result[0], result[1]) if isinstance(result, tuple) else (result, "")
+                if not ok:
+                    raise AuthorizationError(f"{failure} while {name}" + (f": {message}" if message else ""))
 
+        except AuthorizationError:
+            raise
         except Exception as e:
-            raise AuthorizationError(f"Adobe ID authorization failed: {e}")
+            raise AuthorizationError(f"{failure}: {e}")
 
     def get_device_key(self) -> bytes:
         """
@@ -168,3 +171,5 @@ class AdobeAccount:
         for file in [self.activation_xml, self.activation_dat, self.device_xml, self.devicesalt]:
             if file.exists():
                 file.unlink()
+        # Licenses saved after blocked downloads only work with the old key.
+        shutil.rmtree(self.auth_dir / "pending", ignore_errors=True)

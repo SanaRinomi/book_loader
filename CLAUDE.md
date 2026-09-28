@@ -46,6 +46,9 @@ uv run python -m book_loader.cli <command>
 2. **Fulfillment** (`core/adobe/fulfill.py`): Downloads encrypted ebook from Adobe server using ACSM file
    - Uses `libadobeFulfill.py` for Adobe Content Server protocol
    - Transaction-based: each ACSM can only be fulfilled once per authorization
+   - `download()` stores the license: EPUB gets `META-INF/rights.xml`; PDF gets `ADEPT_LICENSE` appended to its `EBX_HANDLER` via `libpdf.py` (without it `ineptpdf` cannot decrypt)
+   - Manual download: if the download fails after fulfillment, `ACSMFulfiller` saves the parsed fulfillment to `<auth_dir>/pending/<acsm sha256>.json` (tagged with a key fingerprint) plus a link page; `--downloaded-file` → `fulfill_from_file()` reuses it (or re-fulfills) and calls `libadobeFulfill.apply_license()`
+   - `libadobe.py`, `libadobeFulfill.py`, `libadobeAccount.py`, `libpdf.py` are vendored from [acsm-calibre-plugin](https://github.com/Leseratte10/acsm-calibre-plugin); keep them diffable against upstream
 
 3. **DRM Removal** (`core/drm/remover.py`): Decrypts ebook using authorization's RSA private key
    - EPUB: `ineptepub.py` (AES-CBC decryption)
@@ -124,7 +127,7 @@ Try all combinations (4 hashes × N MACs × M UserIDs) until decryption succeeds
 
 ### Adobe ACSM
 ```bash
-book-loader process book.acsm [-o OUTPUT_DIR] [--to-pdf] [--auth-dir AUTH_DIR]
+book-loader process book.acsm [-o OUTPUT_DIR] [--to-pdf] [--auth-dir AUTH_DIR] [--downloaded-file FILE]
 book-loader auth create [--anonymous | --adobe-id --email EMAIL]
 book-loader auth info
 book-loader auth backup [-o BACKUP_DIR]

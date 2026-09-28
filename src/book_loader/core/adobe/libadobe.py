@@ -17,6 +17,9 @@ Helper library with code needed for Adobe stuff.
 from uuid import getnode
 import sys, os, hashlib, base64
 import ssl
+import time
+import http.client
+from ...utils.redact import redact_url, redact_text, redact_header
 try: 
     import urllib.request as ulib
     import urllib.error as uliberror
@@ -246,10 +249,59 @@ def makeFingerprint(serial):
     return b64str
 
 
+############################################## Verbose logging:
+
+VERBOSE = False
+
+def set_verbose(enabled):
+    global VERBOSE
+    VERBOSE = bool(enabled)
+
+def is_verbose():
+    return VERBOSE
+
+def vprint(msg):
+    if VERBOSE:
+        print("[verbose] " + msg)
+
+def vprint_headers(title, headers):
+    if not VERBOSE or headers is None:
+        return
+    vprint(title + ":")
+    for name, value in headers.items():
+        vprint("    %s: %s" % (name, redact_header(name, value)))
+
+
+############################################## Status reporting:
+
+# book_loader shows compact status lines (utils/console.py) and mutes the plain
+# print() output of this code unless verbose. Progress, retries and protocol steps
+# are reported here instead. Events: fulfill, fulfilled, notify_start, notify,
+# notify_result, download, redirect, progress, retry, start, info, warning.
+
+_status_callback = None
+
+def set_status_callback(callback):
+    global _status_callback
+    _status_callback = callback
+
+def report(event, **data):
+    if _status_callback is not None:
+        _status_callback(event, **data)
+
+
+class _LoggingRedirectHandler(ulib.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        vprint("Redirect HTTP %d -> %s" % (code, redact_url(newurl)))
+        report("redirect", url=newurl)
+        return ulib.HTTPRedirectHandler.redirect_request(self, req, fp, code, msg, headers, newurl)
+
+
 ############################################## HTTP stuff:
 
-def sendHTTPRequest_DL2FILE(URL, outputfile):
-    # type: (str, str) -> int
+
+def sendHTTPRequest_DL2FILE(URL, outputfile, responseHeaders = None):
+    # type: (str, str, dict) -> int
 
     headers = {
         "Accept": "*/*",
@@ -261,9 +313,9 @@ def sendHTTPRequest_DL2FILE(URL, outputfile):
     # It appears as if lots of book distributors have either invalid or expired certs ...
     # No idea how Adobe handles that (pinning?), but we can just ignore SSL errors and continue anyways.
     # Not the best solution, but it works.
-    try: 
+    try:
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-        # This is needed due to an Adobe change. 
+        # This is needed due to an Adobe change.
         # Without this, only Python <= 3.7.16 can connect, 3.7.17 and above fail.
         # Cloudflare detects that Python uses TLS1.3 which ADE doesn't support, so
         # just enforce TLSv1.2 here.
@@ -274,34 +326,143 @@ def sendHTTPRequest_DL2FILE(URL, outputfile):
     ctx.verify_mode = ssl.CERT_NONE
 
 
-    req = ulib.Request(url=URL, headers=headers)
-    handler = ulib.urlopen(req, context=ctx)
+    # Keep cookies across redirects, like ADE (WinINet) and libgourou (curl cookie engine) do.
+    # Some distributors set a session cookie on the first hop and reject or rate-limit
+    # the redirected request when it arrives without it.
+    opener = ulib.build_opener(
+        ulib.HTTPSHandler(context=ctx), ulib.HTTPCookieProcessor(), _LoggingRedirectHandler()
+    )
+    vprint("Python %s, %s" % (sys.version.split()[0], ssl.OPENSSL_VERSION))
+    vprint_headers("Request headers", headers)
 
+    # Some distributors (notably Google Books) rate-limit the download URL and
+    # answer with 429/503. Retry with backoff, honoring Retry-After if present.
+    # Connection failures are retried too; if a transfer breaks after data arrived,
+    # resume it with a Range request (as libgourou does) instead of starting over.
+    max_attempts = 5
+    max_resumes = 20
+    timeout = 60
+    delay = 5
     chunksize = 16 * 1024
 
-    ret_code = handler.getcode()
+    attempt = 0
+    resumes = 0
+    written = 0         # bytes already saved to outputfile
+    total = None        # full size, if the server told us
 
+    report("download", url=URL)
+    while True:
+        attempt += 1
+        req_headers = dict(headers)
+        if written:
+            req_headers["Range"] = "bytes=%d-" % written
+        req = ulib.Request(url=URL, headers=req_headers)
+        vprint("GET %s (attempt %d/%d%s)" % (redact_url(URL), attempt, max_attempts,
+                                               ", from byte %d" % written if written else ""))
+        start = time.time()
+        try:
+            handler = opener.open(req, timeout=timeout)
+            vprint("HTTP %d from %s after %.2fs"
+                   % (handler.getcode(), redact_url(handler.geturl()), time.time() - start))
+            vprint_headers("Response headers", handler.headers)
+        except uliberror.HTTPError as err:
+            # Keep the body around so callers can inspect / save it.
+            try:
+                err.body = err.read()
+            except Exception:
+                err.body = b""
+            vprint("HTTP %d from %s after %.2fs"
+                   % (err.code, redact_url(err.geturl()), time.time() - start))
+            vprint_headers("Response headers", err.headers)
+            if err.body:
+                snippet = redact_text(err.body[:1000].decode("utf-8", "replace"))
+                vprint("Response body (first 1000 bytes, redacted):\n" + snippet)
+            if err.code == 416 and written and attempt < max_attempts:
+                # Server can't serve the requested range; start over from scratch.
+                report("retry", message="Server rejected resume, restarting")
+                written = 0
+                continue
+            # Google's anti-bot block ("unusual traffic", google.com/sorry) is IP-based;
+            # retrying only extends it, so give up immediately.
+            err.is_bot_block = (
+                "google.com/sorry" in (err.geturl() or "")
+                or b"unusual traffic" in err.body
+                or b"google.com/sorry" in err.body
+            )
+            if err.code not in (429, 503) or err.is_bot_block or attempt >= max_attempts:
+                raise
+            wait = delay
+            retry_after = err.headers.get("Retry-After") if err.headers else None
+            if retry_after and retry_after.strip().isdigit():
+                wait = min(int(retry_after.strip()), 300)
+            report("retry", message="HTTP %d, retrying in %ds (attempt %d/%d)"
+                   % (err.code, wait, attempt + 1, max_attempts))
+            time.sleep(wait)
+            delay *= 2
+            continue
+        except (uliberror.URLError, OSError, http.client.HTTPException) as err:
+            # DNS failure, connection refused / reset, TLS error or timeout.
+            if attempt >= max_attempts:
+                raise
+            reason = getattr(err, "reason", None) or err
+            vprint("Connection failed: %s" % redact_text(str(reason)))
+            report("retry", message="Connection failed, retrying in %ds (attempt %d/%d)"
+                   % (attempt, attempt + 1, max_attempts))
+            time.sleep(attempt)
+            continue
 
-    loc = None
-    try: 
-        loc = req.headers.get("Location")
-    except:
-        pass
+        ret_code = handler.getcode()
+        if responseHeaders is not None:
+            responseHeaders.clear()
+            responseHeaders.update(handler.headers.items())
 
-    if loc is not None:
-        return sendHTTPRequest_DL2FILE(loc, outputfile)
+        if ret_code not in (200, 206):
+            return ret_code
 
-    if ret_code != 200:
-        return ret_code
+        if ret_code == 206 and written:
+            mode = "ab"
+        else:
+            # Full response (the server ignored or didn't get a Range header).
+            written = 0
+            mode = "wb"
 
-    with open(outputfile, "wb") as f:
-        while True: 
-            chunk = handler.read(chunksize)
-            if not chunk: 
-                break
-            f.write(chunk)
+        length = handler.headers.get("Content-Length")
+        if length and length.strip().isdigit():
+            total = written + int(length.strip())
 
-    return 200
+        received = 0
+        broken = None
+        with open(outputfile, mode) as f:
+            while True:
+                try:
+                    chunk = handler.read(chunksize)
+                except (OSError, http.client.HTTPException) as err:
+                    broken = err
+                    break
+                if not chunk:
+                    break
+                f.write(chunk)
+                received += len(chunk)
+                written += len(chunk)
+                report("progress", done=written, total=total)
+        handler.close()
+
+        if broken is None and (total is None or written >= total):
+            return 200
+
+        why = broken if broken is not None else "got %d of %d bytes" % (written, total)
+        vprint("Connection broken: %s" % redact_text(str(why)))
+        if received and resumes < max_resumes:
+            # Data arrived before the connection dropped: resume without spending an attempt.
+            resumes += 1
+            attempt -= 1
+            report("retry", message="Connection broken, resuming at %.1f MB" % (written / 1048576.0))
+            continue
+        if attempt >= max_attempts:
+            raise IOError("Download incomplete: %s" % why)
+        report("retry", message="Connection broken, retrying in %ds (attempt %d/%d)"
+               % (attempt, attempt + 1, max_attempts))
+        time.sleep(attempt)
 
 def sendHTTPRequest_getSimple(URL):
     # type: (str) -> str
@@ -375,15 +536,18 @@ def sendPOSTHTTPRequest(URL, document, type, returnRC = False):
     # Python returns an error when it encounters such a URL, so just add that prefix if it's not present. 
 
     if not "://" in URL:
-        print("Provider is using malformed URL %s, fixing." % (URL))
+        print("Provider is using malformed URL %s, fixing." % (redact_url(URL)))
         URL = "http://" + URL
 
     req = ulib.Request(url=URL, headers=headers, data=document)
-    try: 
+    vprint("POST %s" % redact_url(URL))
+    try:
         handler = ulib.urlopen(req, context=ctx)
-    except uliberror.HTTPError as err: 
+        vprint("HTTP %d from %s" % (handler.getcode(), redact_url(handler.geturl())))
+    except uliberror.HTTPError as err:
         # This happens with HTTP 500 and related errors.
         print("Post request caused HTTPError %d" % (err.code))
+        vprint_headers("Response headers", err.headers)
         if returnRC:
             return err.code, "Post request caused HTTPException"
         else:
