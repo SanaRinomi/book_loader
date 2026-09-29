@@ -311,8 +311,8 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - the notice appears only for `--keep-encrypted --to-pdf` without `--keep-epub`
 
 ### T2.4 `infra/paths.py` (S)
-- [ ] **T2.4.1** Global folder per OS: `%LOCALAPPDATA%\book-loader\` on Windows (Known Folder API when the variable is unset), `~/.config/book-loader/` elsewhere. The auth folder is `adobe\` on Windows and `.adobe/` elsewhere. Add `logs/`, `backups/`, `config.toml` and `state.json` paths.
-- [ ] **T2.4.2** Old Windows location `~\.config\book-loader\.adobe\`: returned as the auth folder only when the new one doesn't exist and the old one does, with a flag so the CLI can show the notice.
+- [x] **T2.4.1** Global folder per OS: `%LOCALAPPDATA%\book-loader\` on Windows (Known Folder API when the variable is unset), `~/.config/book-loader/` elsewhere. The auth folder is `adobe\` on Windows and `.adobe/` elsewhere. Add `logs/`, `backups/`, `config.toml` and `state.json` paths.
+- [x] **T2.4.2** Old Windows location `~\.config\book-loader\.adobe\`: returned as the auth folder only when the new one doesn't exist and the old one does, with a flag so the CLI can show the notice.
 - **Tests:**
   - fake environments for Windows, macOS and Linux, including `LOCALAPPDATA` unset. The OS and environment are passed in, not read from the host, so all three run on Windows. Real macOS and Linux checks are deferred (D5).
   - the old-location fallback when only the old folder exists, when both exist, and when neither does
