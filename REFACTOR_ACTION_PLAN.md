@@ -345,19 +345,19 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - reserved names and long-path cases
 
 ### T2.7 `infra/fs.py` (M)
-- [ ] **T2.7.1** `atomic_write(path)`: write to a temp file in the same folder, then `os.replace`.
-- [ ] **T2.7.2** `unique_path(path)`: adds ` (2)`, ` (3)` and so on.
-- [ ] **T2.7.3** `private_dir(path)`:
+- [x] **T2.7.1** `atomic_write(path)`: write to a temp file in the same folder, then `os.replace`. Text is written with `\n` line endings on every OS, so settings and records don't change when a library moves between systems.
+- [x] **T2.7.2** `unique_path(path)`: adds ` (2)`, ` (3)` and so on.
+- [x] **T2.7.3** `private_dir(path)`:
   - creates the folder with mode `0700` on POSIX (`posix_only` test, deferred D4)
-  - on Windows, checks that no broader permissions were added (read-only check)
+  - on Windows, checks that no broader permissions were added (read-only check): the folder's access list may not allow Everyone, Interactive users, Authenticated Users, Users, Guests or Anonymous Logon, matched by SID so the check works in any Windows language. It returns a warning naming them.
   - only called by code that writes
-- [ ] **T2.7.4** `retry_locked(fn)`: on Windows, retries `PermissionError` and sharing violations with backoff for about 2 seconds, then raises `LockedError` naming the file.
-- [ ] **T2.7.5** `Workspace(parent)`:
+- [x] **T2.7.4** `retry_locked(fn)`: on Windows, retries `PermissionError` and sharing violations with backoff for about 2 seconds, then raises `LockedError` naming the file.
+- [x] **T2.7.5** `Workspace(parent)`:
   - a hidden temp folder in `parent`
-  - `preserve(pattern, dest_resolver)`
+  - `preserve(pattern, dest_resolver)`; `preserved` maps each kept file to its new path, so error messages can be rewritten (T3.6.4)
   - on exit, runs the preserve rules, then removes the folder
-  - a locked file left inside produces a warning, not an error
-- [ ] **T2.7.6** `safe_move(src, dst)`: `os.replace` on the same drive; across drives, copy, fsync, check the hash, then delete the source.
+  - a locked file left inside produces a warning, not an error (collected in `warnings` and sent to the reporter)
+- [x] **T2.7.6** `safe_move(src, dst)`: `os.replace` on the same drive; across drives, copy, fsync, check the hash, then delete the source.
 - **Tests:**
   - an interrupted atomic write leaves the old file intact
   - `unique_path` sequences
