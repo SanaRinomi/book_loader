@@ -437,11 +437,11 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
 - **Tests:** the T0.4.1 golden tests are moved to point at `infra.redact`, the characterization suite passes, and the vendor guard passes after the manifest update.
 
 ### T2.13 `infra/known_dirs.py` (S)
-- [ ] **T2.13.1** Find the Downloads folder:
+- [x] **T2.13.1** Find the Downloads folder (`downloads_dir(host, override)`, which also says where the folder came from):
   - Windows: `SHGetKnownFolderPath(FOLDERID_Downloads)` via `ctypes`
-  - Linux: the `XDG_DOWNLOAD_DIR` entry in `~/.config/user-dirs.dirs`
+  - Linux: the `XDG_DOWNLOAD_DIR` entry in `~/.config/user-dirs.dirs` (in `$XDG_CONFIG_HOME` when that is set, as the xdg-user-dirs tools do)
   - macOS and fallback: `~/Downloads`
-  - an override from settings
+  - an override from settings (`~` means the home folder)
 - **Tests:** a parser test for `user-dirs.dirs`; `windows_only`, the Known Folder result is an existing folder; the override wins. A real Linux desktop and macOS are deferred (D5).
 
 ### T2.14 Type checking (S)

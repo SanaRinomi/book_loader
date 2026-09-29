@@ -2,18 +2,47 @@
 
 On Windows, known folders such as Local AppData and Downloads can be moved by the user
 or by policy, so they are asked from the shell with ``SHGetKnownFolderPath`` instead of
-being built from the home folder. T2.13 adds the Downloads lookup for every OS.
+being built from the home folder.
+
+``downloads_dir`` finds the Downloads folder, first match wins:
+
+1. the override from settings (``[downloads] dir``)
+2. Windows: the Known Folder API (``FOLDERID_Downloads``)
+3. Linux: ``XDG_DOWNLOAD_DIR`` in ``user-dirs.dirs`` (in ``$XDG_CONFIG_HOME``, by default
+   ``~/.config``)
+4. ``~/Downloads`` (macOS, and whenever the above find nothing)
+
+The folder isn't checked or created; whoever watches it does that.
 """
 
 from __future__ import annotations
 
+import re
 import sys
 import uuid
-from pathlib import Path
+from collections.abc import Callable
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
+from typing import TYPE_CHECKING
 
-__all__ = ["FOLDERID_LOCAL_APP_DATA", "windows_known_folder"]
+if TYPE_CHECKING:  # paths.py imports this module, so Host is only needed for typing
+    from .paths import Host
+
+__all__ = [
+    "FOLDERID_DOWNLOADS",
+    "FOLDERID_LOCAL_APP_DATA",
+    "DownloadsDir",
+    "downloads_dir",
+    "parse_user_dirs",
+    "windows_known_folder",
+]
 
 FOLDERID_LOCAL_APP_DATA = "F1B32785-6FBA-4FCF-9D55-7B8E7F157091"
+FOLDERID_DOWNLOADS = "374DE290-123F-4565-9164-39C4925E467B"
+
+_USER_DIR_LINE = re.compile(
+    r'^\s*(?:export\s+)?(XDG_[A-Z]+_DIR)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|(\S+))\s*(?:#.*)?$'
+)
 
 
 def windows_known_folder(folder_id: str) -> Path | None:
@@ -59,3 +88,77 @@ def windows_known_folder(folder_id: str) -> Path | None:
     finally:
         # The shell allocates the string even on some failures; freeing NULL is allowed.
         ole32.CoTaskMemFree(ctypes.cast(buffer, ctypes.c_void_p))
+
+
+# --- Downloads -------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class DownloadsDir:
+    """The Downloads folder and where it came from: ``"override"``, ``"known folder"``,
+    ``"user-dirs.dirs"`` or ``"default"``."""
+
+    path: Path
+    source: str
+
+
+def parse_user_dirs(text: str, home: Path) -> dict[str, Path]:
+    """The folders in an XDG ``user-dirs.dirs`` file, by variable name.
+
+    Values are ``"$HOME/…"`` or an absolute path, as ``xdg-user-dirs-update`` writes
+    them; anything else (a relative path, another variable) is skipped. ``$HOME`` or
+    ``${HOME}`` alone means the folder is turned off, and is skipped too.
+    """
+    folders: dict[str, Path] = {}
+    for line in text.splitlines():
+        match = _USER_DIR_LINE.match(line)
+        if not match:
+            continue
+        name, quoted, bare = match.groups()
+        value = re.sub(r"\\(.)", r"\1", quoted) if quoted is not None else bare
+        for prefix in ("$HOME", "${HOME}"):
+            if value == prefix or value.startswith(prefix + "/"):
+                rest = value[len(prefix) :].strip("/")
+                if rest:
+                    folders[name] = home.joinpath(*rest.split("/"))
+                break
+        else:
+            if value.startswith("/"):
+                folders[name] = Path(value)
+    return folders
+
+
+def _expand_home(value: Path, home: Path) -> Path:
+    parts = value.parts
+    if parts and parts[0] == "~":
+        return home.joinpath(*parts[1:])
+    return value
+
+
+def downloads_dir(
+    host: Host,
+    override: Path | None = None,
+    *,
+    known_folder: Callable[[str], Path | None] = windows_known_folder,
+    read_text: Callable[[Path], str] = lambda path: path.read_text(encoding="utf-8"),
+) -> DownloadsDir:
+    """The Downloads folder for ``host`` (see the module docstring for the order)."""
+    if override is not None:
+        return DownloadsDir(_expand_home(override, host.home), "override")
+    system = str(host.os)
+    if system == "windows":
+        found = known_folder(FOLDERID_DOWNLOADS)
+        if found is not None:
+            return DownloadsDir(found, "known folder")
+    elif system == "linux":
+        # A POSIX rule, so it also holds when Linux is tested on another OS.
+        config = host.env.get("XDG_CONFIG_HOME")
+        absolute = config and PurePosixPath(config).is_absolute()
+        base = Path(config) if config and absolute else host.home / ".config"
+        try:
+            folders = parse_user_dirs(read_text(base / "user-dirs.dirs"), host.home)
+        except (OSError, UnicodeDecodeError):
+            folders = {}
+        if "XDG_DOWNLOAD_DIR" in folders:
+            return DownloadsDir(folders["XDG_DOWNLOAD_DIR"], "user-dirs.dirs")
+    return DownloadsDir(host.home / "Downloads", "default")
