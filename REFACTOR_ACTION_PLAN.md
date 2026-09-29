@@ -204,8 +204,9 @@ Goal: vendored files move to their final home with only import changes, and are 
   - `git diff -M --stat` shows the vendored files as renames (at least 95% similar) with only import lines changed
 
 ### T1.2 PATCHES.md (M)
-- [ ] **T1.2.1** Find the upstream versions. Diff each file against acsm-calibre-plugin releases (for the five `adobe` files) and DeDRM/noDRM releases (for the six `drm` files), and choose the closest commit.
-- [ ] **T1.2.2** Write `adobe/_vendor/PATCHES.md` and `drm/_vendor/PATCHES.md`. For each file, record:
+- [x] **T1.2.1** Find the upstream versions. Diff each file against acsm-calibre-plugin releases (for the five `adobe` files) and DeDRM/noDRM releases (for the six `drm` files), and choose the closest commit.
+  - Result, 2026-09-29: no release tag matches either set, so both are pinned to commits: acsm-calibre-plugin `fb288af` and noDRM `7379b45`. Every file matches its pin exactly once the local changes are removed.
+- [x] **T1.2.2** Write `adobe/_vendor/PATCHES.md` and `drm/_vendor/PATCHES.md`. For each file, record:
   - the upstream repository and commit
   - its license
   - every local change: relative imports, the `report()` hook, redacted logging, the parse/download/apply split, `apply_license`, `_save_error_body`, the HTTP 429 handling
@@ -218,8 +219,12 @@ Decided 2026-09-29: replace `oscrypto` with a shim (REFACTOR_PLAN decision 21, Â
 
 ### T1.4 Vendor guard (S)
 - [ ] **T1.4.1** Write `tests/unit/test_vendor_manifest.py`. It hashes every file in both `_vendor/` folders and compares against `_vendor/MANIFEST.sha256`.
-- [ ] **T1.4.2** Add a script, `uv run python tests/tools/update_vendor_manifest.py`, to regenerate the manifest on purpose.
-- **Tests:** the guard passes. Changing one byte in a vendored file makes it fail.
+  - normalize line endings before hashing: replace CRLF with LF. `core.autocrlf` is on for this repository, so Windows checkouts have CRLF and macOS and Linux checkouts have LF. Hashing the raw bytes would make the guard pass here and fail there (D1)
+  - the manifest itself lists files in sorted order, with `/` separators, so it is the same on every OS
+- [ ] **T1.4.2** Add a script, `uv run python tests/tools/update_vendor_manifest.py`, to regenerate the manifest on purpose. It hashes the same way as the test, using shared code.
+- **Tests:**
+  - the guard passes, and changing one byte in a vendored file makes it fail
+  - converting a vendored file between CRLF and LF line endings does not change its hash, so the guard still passes
 
 ### T1.5 PKCS#12 shim for oscrypto (M)
 - [ ] **T1.5.1** Write `adobe/pkcs12.py`, project code rather than vendored. It offers the three names `libadobe` uses, with the same arguments and return types as `oscrypto`:
@@ -239,7 +244,23 @@ Decided 2026-09-29: replace `oscrypto` with a shim (REFACTOR_PLAN decision 21, Â
   - `live`, local only: the real `activation.xml` on this machine gives identical results through the shim and `oscrypto`. Nothing from it is written to disk or committed
   - the Linux run is deferred (D3)
 
-**Phase 1 exit:** vendored code is in `_vendor/` and documented; the guard is active; `libadobe` no longer needs `oscrypto`; the CLI behaves the same.
+### T1.6 Finish the upstream fix `bccca40` (S)
+acsm-calibre-plugin `bccca40` (2026-06-24, "Fix error message for accounts not yet migrated to ByteBooks") changes `libadobeAccount.signIn()`. `d197e84` backported two of its three hunks (T1.2): the `E_ADEPT_RESET_PW_REQUIRED` message and `str(credentials)`. This task applies the rest, so that `signIn()` is identical to upstream. It needs the guard from T1.4.
+- [ ] **T1.6.1** In `adobe/_vendor/libadobeAccount.py`, apply the rest of `bccca40` exactly as upstream has it. The bare `except` in `signIn()` returns "Invalid response to login request (please open a bug report)", and one of the two blank lines before that `except` goes. Also restore upstream's whitespace in the backported lines (`else: ` keeps its trailing space), so the diff against upstream shows only relative imports.
+- [ ] **T1.6.2** Update `adobe/_vendor/PATCHES.md` in the same commit:
+  - `libadobeAccount.py` now has only relative imports as local changes
+  - all five files then match upstream `4eff3ee` (2026-09-23) or a newer head, so move the pin there. Check first that upstream has changed none of the five files since
+  - remove `bccca40` from the list of upstream changes that are not applied
+- [ ] **T1.6.3** Regenerate `MANIFEST.sha256` with the T1.4.2 script in the same commit, and add a changelog entry: a clearer message when Adobe's sign-in reply can't be read, and for Adobe IDs that need a password reset after the ByteBooks migration.
+- **Tests:**
+  - `diff` of `libadobeAccount.py` against upstream at the new pin shows only the seven relative import lines. The reviewer runs the command in `PATCHES.md`
+  - characterization tests of `signIn()` error handling, with `buildSignInRequest` and `sendRequestDocu` replaced by fakes. The synthetic authorization folder (`fixtures/builders/adobe_auth.py`) gains an `authenticationCertificate` in `activationServiceInfo`, because `signIn()` reads it first:
+    - an `<error data="E_ADEPT_RESET_PW_REQUIRED ...">` reply gives `(False, "Server requires a password reset due to ByteBooks migration. ...")`
+    - a reply that isn't XML gives `(False, "Invalid response to login request (please open a bug report)")`
+    - the `CUS05051` and `LOGIN_FAILED` replies keep their messages, and an unknown error code gives "Unknown Adobe error:" followed by the reply
+  - the vendor guard passes with the new manifest
+
+**Phase 1 exit:** vendored code is in `_vendor/` and documented; the guard is active; `libadobe` no longer needs `oscrypto`; `libadobeAccount` carries all of upstream `bccca40`; the CLI behaves the same.
 
 ---
 
