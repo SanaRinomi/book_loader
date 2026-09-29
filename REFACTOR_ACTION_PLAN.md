@@ -405,20 +405,20 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - vendored `print` output reaches the log
 
 ### T2.11 `infra/archive.py` (L)
-- [ ] **T2.11.1** Writer:
-  - a tar stream with `manifest.json` as its first member
-  - gzip, or xz on request
+- [x] **T2.11.1** Writer:
+  - a tar stream with `manifest.json` as its first member (the caller's metadata plus each file's size and SHA-256)
+  - gzip, or xz on request; without encryption it is an ordinary `.tar.gz` / `.tar.xz`
   - written to a temp file and renamed, with mode `0600`
-- [ ] **T2.11.2** Encryption layer:
-  - header: magic bytes, format version, scrypt settings, salt
-  - AES-256-GCM in 1 MiB chunks, each with its own nonce and tag
+- [x] **T2.11.2** Encryption layer:
+  - header: magic bytes, format version, scrypt settings, salt; also a key-check value (so a wrong passphrase is told apart from damage) and a header checksum. Settings beyond N = 2^20, r = 16, p = 4 are refused, so a crafted file can't exhaust memory
+  - AES-256-GCM in 1 MiB chunks, each with its own nonce and tag; the header is authenticated with every chunk
   - the chunk index is bound into each chunk, and a final-chunk flag prevents truncation
-- [ ] **T2.11.3** Reader:
+- [x] **T2.11.3** Reader:
   - detects encryption from the header
   - `read_manifest()` without extracting everything
-  - `extract(members, dest)` with `filter="data"`, rejecting absolute paths and `..`, applying `names.library_component` rules, and detecting case collisions
+  - `extract(dest, select)` with `filter="data"`, rejecting absolute paths and `..`, applying `names.library_component` rules, and detecting case collisions. Only regular files are written (links and devices are refused), nothing existing is overwritten, and renamed entries are reported
   - checks every file's SHA-256 against the manifest
-- [ ] **T2.11.4** Reader for original archives: plain `.tar.gz` files with a single top folder of any name.
+- [x] **T2.11.4** Reader for original archives: plain `.tar.gz` files with a single top folder of any name.
 - **Tests:**
   - round trips, plain and encrypted
   - wrong passphrase
