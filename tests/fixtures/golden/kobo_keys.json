@@ -1,0 +1,154 @@
+{
+  "hash_keys": [
+    "88b3a2e13",
+    "XzUhGYdFp",
+    "NoCanLook",
+    "QJhwzAtXL"
+  ],
+  "cases": [
+    {
+      "mac": "AA:BB:CC:DD:EE:01",
+      "user_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "hash_key": "88b3a2e13",
+      "userkey": "4e332379ac88717285db53941b31b682"
+    },
+    {
+      "mac": "AA:BB:CC:DD:EE:01",
+      "user_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "hash_key": "XzUhGYdFp",
+      "userkey": "5ab90fae7de1b3bafe2369958c78e2d7"
+    },
+    {
+      "mac": "AA:BB:CC:DD:EE:01",
+      "user_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "hash_key": "NoCanLook",
+      "userkey": "07841f352844dbbd20f5cecce630a6e2"
+    },
+    {
+      "mac": "AA:BB:CC:DD:EE:01",
+      "user_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "hash_key": "QJhwzAtXL",
+      "userkey": "dd420e04a337eb8b9bda019056feb711"
+    },
+    {
+      "mac": "AA:BB:CC:DD:EE:01",
+      "user_id": "12345678-1234-1234-1234-123456789abc",
+      "hash_key": "88b3a2e13",
+      "userkey": "c2b2084b0ab8a33bed4805b558508d00"
+    },
+    {
+      "mac": "AA:BB:CC:DD:EE:01",
+      "user_id": "12345678-1234-1234-1234-123456789abc",
+      "hash_key": "XzUhGYdFp",
+      "userkey": "0e64123728cfbe1bc52d46aca95f371a"
+    },
+    {
+      "mac": "AA:BB:CC:DD:EE:01",
+      "user_id": "12345678-1234-1234-1234-123456789abc",
+      "hash_key": "NoCanLook",
+      "userkey": "c8f70ddc9c5918ddab1e546eceaa4abe"
+    },
+    {
+      "mac": "AA:BB:CC:DD:EE:01",
+      "user_id": "12345678-1234-1234-1234-123456789abc",
+      "hash_key": "QJhwzAtXL",
+      "userkey": "eeb1a548f92a1b38043d65f1d9e31426"
+    },
+    {
+      "mac": "AA:BB:CC:DD:EE:02",
+      "user_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "hash_key": "88b3a2e13",
+      "userkey": "88094e7ac1c06baf6aeffb0a03970735"
+    },
+    {
+      "mac": "AA:BB:CC:DD:EE:02",
+      "user_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "hash_key": "XzUhGYdFp",
+      "userkey": "b37fdaf1ba5d6193bfbb93507c415c5b"
+    },
+    {
+      "mac": "AA:BB:CC:DD:EE:02",
+      "user_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "hash_key": "NoCanLook",
+      "userkey": "3e96e8ea40cee3b37f06e2619adc21e0"
+    },
+    {
+      "mac": "AA:BB:CC:DD:EE:02",
+      "user_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "hash_key": "QJhwzAtXL",
+      "userkey": "6d2c9a9f3e5627ff0677a7921d0e4470"
+    },
+    {
+      "mac": "AA:BB:CC:DD:EE:02",
+      "user_id": "12345678-1234-1234-1234-123456789abc",
+      "hash_key": "88b3a2e13",
+      "userkey": "e762ac3b2f27547be688aaa4f98fcf14"
+    },
+    {
+      "mac": "AA:BB:CC:DD:EE:02",
+      "user_id": "12345678-1234-1234-1234-123456789abc",
+      "hash_key": "XzUhGYdFp",
+      "userkey": "b43ee7731b9150dee8d83e37ac2da722"
+    },
+    {
+      "mac": "AA:BB:CC:DD:EE:02",
+      "user_id": "12345678-1234-1234-1234-123456789abc",
+      "hash_key": "NoCanLook",
+      "userkey": "0be4e2a42b9957564aac507144f31f60"
+    },
+    {
+      "mac": "AA:BB:CC:DD:EE:02",
+      "user_id": "12345678-1234-1234-1234-123456789abc",
+      "hash_key": "QJhwzAtXL",
+      "userkey": "1f0d7c72a974a12ac01e31e0af154d04"
+    },
+    {
+      "mac": "00:1B:63:84:45:E6",
+      "user_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "hash_key": "88b3a2e13",
+      "userkey": "70f11a90d53b1ac4da2b554b9bd48a21"
+    },
+    {
+      "mac": "00:1B:63:84:45:E6",
+      "user_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "hash_key": "XzUhGYdFp",
+      "userkey": "4352eabbb1b4f00318761cc9db6ba540"
+    },
+    {
+      "mac": "00:1B:63:84:45:E6",
+      "user_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "hash_key": "NoCanLook",
+      "userkey": "870ce80d4d69c4f85cbf1c5a2f64438c"
+    },
+    {
+      "mac": "00:1B:63:84:45:E6",
+      "user_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "hash_key": "QJhwzAtXL",
+      "userkey": "c4020e43013856cc7404df5469e85567"
+    },
+    {
+      "mac": "00:1B:63:84:45:E6",
+      "user_id": "12345678-1234-1234-1234-123456789abc",
+      "hash_key": "88b3a2e13",
+      "userkey": "b7bc100bdd9a7986ec82788d18445efa"
+    },
+    {
+      "mac": "00:1B:63:84:45:E6",
+      "user_id": "12345678-1234-1234-1234-123456789abc",
+      "hash_key": "XzUhGYdFp",
+      "userkey": "df09319a1ad19c15d526fa34b7d563d0"
+    },
+    {
+      "mac": "00:1B:63:84:45:E6",
+      "user_id": "12345678-1234-1234-1234-123456789abc",
+      "hash_key": "NoCanLook",
+      "userkey": "2b0095b29b4102aa279a8c323fa88037"
+    },
+    {
+      "mac": "00:1B:63:84:45:E6",
+      "user_id": "12345678-1234-1234-1234-123456789abc",
+      "hash_key": "QJhwzAtXL",
+      "userkey": "7e932062397e11877ba9f61c9d9665ac"
+    }
+  ]
+}

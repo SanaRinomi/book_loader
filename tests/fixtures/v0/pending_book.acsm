@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<fulfillmentToken fulfillmentType="buy" auth="user" xmlns="http://ns.adobe.com/adept">
+  <distributor>urn:uuid:77777777-7777-4777-8777-777777777777</distributor>
+  <operatorURL>https://acs.example.com/fulfillment</operatorURL>
+  <transaction>TEST-TRANSACTION-0001</transaction>
+  <expiration>2026-01-01T01:00:00+00:00</expiration>
+  <resourceItemInfo>
+    <resource>urn:uuid:33333333-3333-4333-8333-333333333333</resource>
+    <resourceItem>0</resourceItem>
+    <metadata>
+      <dc:title xmlns:dc="http://purl.org/dc/elements/1.1/">The Test Book: Volume 1</dc:title>
+      <dc:format xmlns:dc="http://purl.org/dc/elements/1.1/">application/epub+zip</dc:format>
+    </metadata>
+  </resourceItemInfo>
+  <hmac>ZmFrZSBobWFj</hmac>
+</fulfillmentToken>

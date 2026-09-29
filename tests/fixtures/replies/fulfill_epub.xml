@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<envelope xmlns="http://ns.adobe.com/adept">
+  <fulfillmentResult>
+    <fulfillment>44444444-4444-4444-8444-444444444444</fulfillment>
+    <returnable>false</returnable>
+    <initial>true</initial>
+    <resourceItemInfo>
+      <resource>urn:uuid:33333333-3333-4333-8333-333333333333</resource>
+      <resourceItem>0</resourceItem>
+      <metadata>
+        <dc:title xmlns:dc="http://purl.org/dc/elements/1.1/">The Test Book: Volume 1</dc:title>
+        <dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">Test Author</dc:creator>
+        <dc:publisher xmlns:dc="http://purl.org/dc/elements/1.1/">Test Publisher</dc:publisher>
+        <dc:format xmlns:dc="http://purl.org/dc/elements/1.1/">application/epub+zip</dc:format>
+      </metadata>
+      <licenseToken>
+        <user>urn:uuid:11111111-1111-4111-8111-111111111111</user>
+        <resource>urn:uuid:33333333-3333-4333-8333-333333333333</resource>
+        <resourceItemType>application/epub+zip</resourceItemType>
+        <fulfillment>44444444-4444-4444-8444-444444444444</fulfillment>
+        <device>urn:uuid:22222222-2222-4222-8222-222222222222</device>
+        <voucher>urn:uuid:55555555-5555-4555-8555-555555555555</voucher>
+        <licenseURL>https://license.example.com/licensesign</licenseURL>
+        <operatorURL>https://acs.example.com/fulfillment</operatorURL>
+        <fulfillmentType>buy</fulfillmentType>
+        <licensee><name>Test Reader</name></licensee>
+        <encryptedKey keyInfo="urn:uuid:66666666-6666-4666-8666-666666666666">ZmFrZSBlbmNyeXB0ZWQga2V5</encryptedKey>
+        <permissions>
+          <display><device>urn:uuid:22222222-2222-4222-8222-222222222222</device></display>
+          <excerpt><device>urn:uuid:22222222-2222-4222-8222-222222222222</device></excerpt>
+        </permissions>
+        <signature>ZmFrZSBzaWduYXR1cmU=</signature>
+      </licenseToken>
+      <src>https://download.example.com/books/test-book.epub?id=AbCdEf123456&amp;output=epub&amp;sig=ZmFrZXNpZ25hdHVyZXZhbHVl</src>
+      <mimeType>application/epub+zip</mimeType>
+    </resourceItemInfo>
+  </fulfillmentResult>
+</envelope>

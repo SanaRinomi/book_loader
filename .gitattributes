@@ -1,0 +1,5 @@
+# Fixture data is compared byte for byte; never convert its line endings.
+tests/fixtures/golden/** -text
+tests/fixtures/os_output/** -text
+tests/fixtures/replies/** -text
+tests/fixtures/v0/** -text

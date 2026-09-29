@@ -135,3 +135,25 @@ class TestOsMarkers:
     @pytest.mark.posix_only
     def test_posix_only_runs_on_posix(self):
         assert os.name == "posix"
+
+
+class TestNetworkGuard:
+    def test_remote_connections_are_refused(self):
+        import socket
+        import urllib.request
+
+        from tests.conftest import NetworkBlockedError
+
+        with pytest.raises(NetworkBlockedError):
+            socket.create_connection(("example.com", 443), timeout=1)
+        with pytest.raises(NetworkBlockedError):
+            urllib.request.urlopen("https://adeactivate.adobe.com/adept", timeout=1)
+
+    def test_loopback_is_allowed(self):
+        import socket
+
+        with socket.socket() as server:
+            server.bind(("127.0.0.1", 0))
+            server.listen()
+            with socket.create_connection(server.getsockname(), timeout=1):
+                pass

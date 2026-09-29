@@ -1,7 +1,9 @@
 """Shared fixtures for the whole test suite.
 
 Every test runs with a temporary home folder (``tmp_home`` is autouse), so no test can
-read or change the real authorization, Kobo library, Downloads or backups.
+read or change the real authorization, Kobo library, Downloads or backups. Tests not
+marked ``network`` or ``live`` also can't open network connections, except to this
+machine, so nothing reaches Adobe by accident.
 """
 
 from __future__ import annotations
@@ -9,6 +11,7 @@ from __future__ import annotations
 import importlib
 import inspect
 import os
+import socket
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -37,6 +40,8 @@ _IMPORT_TIME_HOME_PATHS = [
         ("Library", "Application Support", "Kobo", "Kobo Desktop Edition"),
     ),
 ]
+
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 _OS_MARKERS = {
     "windows_only": sys.platform == "win32",
@@ -86,6 +91,51 @@ def tmp_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
     _repoint_import_time_paths(home, monkeypatch)
     return home
+
+
+class NetworkBlockedError(RuntimeError):
+    """A test tried to reach another machine without the ``network`` or ``live`` marker."""
+
+
+def _host_of(address) -> str | None:
+    return address[0] if isinstance(address, tuple) and address else None
+
+
+@pytest.fixture(autouse=True)
+def _no_network(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    if request.node.get_closest_marker("network") or request.node.get_closest_marker("live"):
+        return
+
+    def refuse(host) -> None:
+        raise NetworkBlockedError(
+            f"Test tried to connect to {host!r}; mark it network or live if that is intended"
+        )
+
+    real_connect = socket.socket.connect
+    real_connect_ex = socket.socket.connect_ex
+    real_getaddrinfo = socket.getaddrinfo
+
+    def connect(self, address):
+        host = _host_of(address)
+        if host is not None and host not in _LOCAL_HOSTS:
+            refuse(host)
+        return real_connect(self, address)
+
+    def connect_ex(self, address):
+        host = _host_of(address)
+        if host is not None and host not in _LOCAL_HOSTS:
+            refuse(host)
+        return real_connect_ex(self, address)
+
+    def getaddrinfo(host, *args, **kwargs):
+        name = host.decode() if isinstance(host, bytes) else host
+        if name is not None and name not in _LOCAL_HOSTS:
+            refuse(name)
+        return real_getaddrinfo(host, *args, **kwargs)
+
+    monkeypatch.setattr(socket.socket, "connect", connect)
+    monkeypatch.setattr(socket.socket, "connect_ex", connect_ex)
+    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
 
 
 @pytest.fixture
