@@ -30,6 +30,7 @@ __all__ = [
     "LibraryError",
     "LockedError",
     "ManualDownloadRequired",
+    "OperationCancelled",
     "SecretUnavailableError",
     "WeasyPrintUnavailableError",
 ]
@@ -261,3 +262,17 @@ class LibraryError(BookLoaderError):
     """A library folder is missing, damaged, or can't be used for this command."""
 
     default_hint = "Run 'book-loader library status' to check the library."
+
+
+class OperationCancelled(BookLoaderError):
+    """The user cancelled a question (Ctrl+C, Esc, or "Cancel" in a menu)."""
+
+    default_hint = "Nothing more was done. Run the command again to carry on."
+
+    def __init__(
+        self,
+        message: str = "Cancelled.",
+        hint: str | None = None,
+        step: str | None = None,
+    ) -> None:
+        super().__init__(message, hint, step)

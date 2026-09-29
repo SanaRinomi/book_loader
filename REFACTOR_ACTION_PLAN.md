@@ -286,15 +286,15 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
 - **Tests:** every error builds a message and a hint; `ManualDownloadRequired`'s message holds both finishing instructions and the link page path, and never the URL.
 
 ### T2.2 `domain/models.py`, `events.py`, `prompts.py` (M)
-- [ ] **T2.2.1** Create the models as frozen dataclasses:
+- [x] **T2.2.1** Create the models as frozen dataclasses:
   - `AuthType(StrEnum)` with `anonymous`, `adobe_id`, `ade_unusable`, `none`, `unknown`
   - `AuthInfo`
   - `BookFormat` (`epub`, `pdf`)
   - `ProcessRequest`, `ProcessResult`, `StepResult`
   - `BatchResult` with `exit_code`
   - `BookRecord`, `PendingRecord`, `LoanRecord`
-- [ ] **T2.2.2** Create the typed events: `StepStarted`, `StepProgress(done, total)`, `StepNote`, `StepDone`, `StepFailed`, `Warning`, `ServerContact(kind, url)`, `Redirected(url)`, `Retrying(message)`. Add the `Reporter` protocol (`emit(event)`, plus `suspend()` returning a context manager).
-- [ ] **T2.2.3** Create the `Prompter` protocol: `manual_download`, `resolve_conflict`, `select_books`, `select_many`, `confirm`, `choose`, `text`, `secret`.
+- [x] **T2.2.2** Create the typed events: `StepStarted`, `StepProgress(done, total)`, `StepNote`, `StepDone`, `StepFailed`, `Warning`, `ServerContact(kind, url)`, `Redirected(url)`, `Retrying(message)`. Add the `Reporter` protocol (`emit(event)`, plus `suspend()` returning a context manager).
+- [x] **T2.2.3** Create the `Prompter` protocol: `manual_download`, `resolve_conflict`, `select_books`, `select_many`, `confirm`, `choose`, `text`, `secret`.
 - **Tests:** model invariants (for example, `BatchResult.exit_code` is 0 only when nothing failed or is pending), and each event is immutable.
 
 ### T2.3 `domain/conflicts.py` and `retention.py` (S)

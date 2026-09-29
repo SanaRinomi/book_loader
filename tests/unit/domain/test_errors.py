@@ -23,6 +23,7 @@ from book_loader.domain.errors import (
     LibraryError,
     LockedError,
     ManualDownloadRequired,
+    OperationCancelled,
     SecretUnavailableError,
     WeasyPrintUnavailableError,
 )
@@ -54,6 +55,7 @@ EXAMPLES = {
     SecretUnavailableError: lambda: SecretUnavailableError("No backup passphrase"),
     ArchiveError: lambda: ArchiveError("Truncated archive"),
     LibraryError: lambda: LibraryError("Not a library"),
+    OperationCancelled: OperationCancelled,
 }
 
 
