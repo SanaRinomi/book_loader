@@ -96,9 +96,9 @@ Goal: pin today's behaviour in tests and set up tooling and a local check before
 - **Tests:** a smoke test that every fixture works on all three OSes. Runs on Windows now; macOS and Linux are deferred (D2).
 
 ### T0.3 Help parity snapshot (S)
-- [ ] **T0.3.1** Write `tests/tools/dump_help.py`. It walks the Click command tree and saves, for every command and group, the set of option names (for example `-o/--output`, `--to-pdf`, `-v/--verbose`) and arguments, into `tests/fixtures/golden/help_options.json`.
-- [ ] **T0.3.2** Write `tests/cli/test_help_parity.py`. For every command in the golden file, the command still exists and still has every option. New commands and options are allowed. The test compares sets of options, not help text, so rich-click's formatting in Phase 6 doesn't break it.
-- [ ] **T0.3.3** Include `process --optimize/--no-optimize`, `process -v`, `process --auth-dir` and `auth reset --yes`.
+- [x] **T0.3.1** Write `tests/tools/dump_help.py`. It walks the Click command tree and saves, for every command and group, the set of option names (for example `-o/--output`, `--to-pdf`, `-v/--verbose`) and arguments, into `tests/fixtures/golden/help_options.json`.
+- [x] **T0.3.2** Write `tests/cli/test_help_parity.py`. For every command in the golden file, the command still exists and still has every option. New commands and options are allowed. The test compares sets of options, not help text, so rich-click's formatting in Phase 6 doesn't break it.
+- [x] **T0.3.3** Include `process --optimize/--no-optimize`, `process -v`, `process --auth-dir` and `auth reset --yes`.
 - **Tests:** the parity test passes against today's CLI. Remove one option by hand to check that the test catches it, then revert.
 
 ### T0.4 Characterization tests of the current code (L)

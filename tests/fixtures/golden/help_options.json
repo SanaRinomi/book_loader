@@ -1,0 +1,233 @@
+{
+  "book-loader": {
+    "arguments": [],
+    "options": [
+      {
+        "names": [
+          "--version"
+        ],
+        "takes_value": false
+      }
+    ]
+  },
+  "book-loader auth": {
+    "arguments": [],
+    "options": []
+  },
+  "book-loader auth backup": {
+    "arguments": [],
+    "options": [
+      {
+        "names": [
+          "--output",
+          "-o"
+        ],
+        "takes_value": true
+      }
+    ]
+  },
+  "book-loader auth create": {
+    "arguments": [],
+    "options": [
+      {
+        "names": [
+          "--adobe-id"
+        ],
+        "takes_value": false
+      },
+      {
+        "names": [
+          "--anonymous"
+        ],
+        "takes_value": false
+      },
+      {
+        "names": [
+          "--email"
+        ],
+        "takes_value": true
+      },
+      {
+        "names": [
+          "--password"
+        ],
+        "takes_value": true
+      }
+    ]
+  },
+  "book-loader auth info": {
+    "arguments": [],
+    "options": []
+  },
+  "book-loader auth reset": {
+    "arguments": [],
+    "options": [
+      {
+        "names": [
+          "--yes"
+        ],
+        "takes_value": false
+      }
+    ]
+  },
+  "book-loader auth restore": {
+    "arguments": [],
+    "options": [
+      {
+        "names": [
+          "--backup-dir"
+        ],
+        "takes_value": true
+      },
+      {
+        "names": [
+          "--file"
+        ],
+        "takes_value": true
+      }
+    ]
+  },
+  "book-loader convert": {
+    "arguments": [
+      {
+        "name": "epub_file",
+        "nargs": 1,
+        "required": true
+      }
+    ],
+    "options": [
+      {
+        "choices": [
+          "calibre",
+          "python"
+        ],
+        "names": [
+          "--convert-engine"
+        ],
+        "takes_value": true
+      },
+      {
+        "names": [
+          "--output",
+          "-o"
+        ],
+        "takes_value": true
+      }
+    ]
+  },
+  "book-loader info": {
+    "arguments": [],
+    "options": []
+  },
+  "book-loader kobo": {
+    "arguments": [],
+    "options": [
+      {
+        "names": [
+          "--source"
+        ],
+        "takes_value": true
+      }
+    ]
+  },
+  "book-loader kobo dedrm": {
+    "arguments": [],
+    "options": [
+      {
+        "names": [
+          "--all"
+        ],
+        "takes_value": false
+      },
+      {
+        "names": [
+          "--output",
+          "-o"
+        ],
+        "takes_value": true
+      },
+      {
+        "names": [
+          "--overwrite"
+        ],
+        "takes_value": false
+      },
+      {
+        "names": [
+          "--skip-existing"
+        ],
+        "takes_value": false
+      }
+    ]
+  },
+  "book-loader kobo list": {
+    "arguments": [],
+    "options": []
+  },
+  "book-loader process": {
+    "arguments": [
+      {
+        "name": "acsm_file",
+        "nargs": 1,
+        "required": true
+      }
+    ],
+    "options": [
+      {
+        "names": [
+          "--auth-dir"
+        ],
+        "takes_value": true
+      },
+      {
+        "choices": [
+          "calibre",
+          "python"
+        ],
+        "names": [
+          "--convert-engine"
+        ],
+        "takes_value": true
+      },
+      {
+        "names": [
+          "--downloaded-file"
+        ],
+        "takes_value": true
+      },
+      {
+        "names": [
+          "--keep-encrypted"
+        ],
+        "takes_value": false
+      },
+      {
+        "names": [
+          "--no-optimize",
+          "--optimize"
+        ],
+        "takes_value": false
+      },
+      {
+        "names": [
+          "--output",
+          "-o"
+        ],
+        "takes_value": true
+      },
+      {
+        "names": [
+          "--to-pdf"
+        ],
+        "takes_value": false
+      },
+      {
+        "names": [
+          "--verbose",
+          "-v"
+        ],
+        "takes_value": false
+      }
+    ]
+  }
+}
