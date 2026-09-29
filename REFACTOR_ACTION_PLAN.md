@@ -366,10 +366,10 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - a cross-drive move simulated by forcing the copy path
 
 ### T2.8 `infra/locks.py` (S)
-- [ ] **T2.8.1** `Lock(path, timeout)`:
-  - created atomically (`O_CREAT|O_EXCL`), holding the process ID, host name and start time
-  - stale when that process is gone on the same host
-  - `LockedError` after the timeout
+- [x] **T2.8.1** `Lock(path, timeout)`:
+  - created atomically (`O_CREAT|O_EXCL`), holding the process ID, host name and start time (plus a random token, so a run only ever removes its own lock, and an optional purpose shown to a run that waits)
+  - stale when that process is gone on the same host; a lock from another host is never judged stale. Breaking a stale lock is guarded by a `.break` file, so two runs can't both break it and remove each other's new lock
+  - `LockedError` after the timeout, naming the holder and saying which file to delete if no other run is going
 - **Tests:**
   - two locks: the second waits and then fails
   - a stale lock from a dead process ID is taken over
