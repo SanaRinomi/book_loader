@@ -125,7 +125,7 @@ def to_json(specs: dict[str, CommandSpec]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").partition("\n")[0])
     parser.add_argument("--stdout", action="store_true", help="print instead of writing")
     parser.add_argument("--output", type=Path, default=GOLDEN, help="file to write")
     parser.add_argument(

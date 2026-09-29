@@ -49,7 +49,8 @@ upstream counterpart of the download and license code added to `libadobeFulfill.
   two package levels below `book_loader`, as `core/adobe/` was. If a target moves, only its
   import line changes.
   - `libadobe.py` and `libadobeFulfill.py` import `redact_url`, `redact_text` and
-    `redact_header` from `...utils.redact`
+    `redact_header` from `...infra.redact` (from `...utils.redact` until T2.12 moved the
+    module, 2026-09-29)
   - `libadobe.py` imports `keys`, `dump_certificate` and `dump_private_key` from `..pkcs12`,
     in place of `oscrypto` (see [libadobe.py](#libadobepy))
 - **Whitespace.** Trailing spaces are removed on some lines next to local changes, for example

@@ -91,6 +91,7 @@ What this changes:
   - `KoboLibrary.close()` isn't called when an error happens, which leaves a copy of the database, including purchase keys, in the system temp folder.
   - ZIP files aren't closed on errors.
   - Two books with the same title get the same file name.
+  - `kobo dedrm --skip-existing` skips every book, including ones not yet in the output folder: the remembered "skip all" is applied before checking that the file exists ([cli.py:57](src/book_loader/cli.py#L57)). Found 2026-09-29 during T2.3.
   - `_unpad` doesn't check the padding, so a wrong key can pass as a right one.
   - The raw-byte database copy misses changes still in the WAL file while Kobo Desktop is open.
   - It only works on macOS (`/sbin/ifconfig`).
@@ -266,12 +267,12 @@ src/book_loader/
     - **Git Bash / mintty on Windows** reports no terminal, and prompt_toolkit fails there with `NoConsoleScreenBufferError`. When `--interactive` is forced there, `PlainPrompter` uses numbered menus and line input instead of questionary.
 11. **Naming rules (`infra/names.py`).**
     - **Plain mode keeps today's names exactly.** Adobe names come from the vendored `parse_fulfillment`, which keeps letters, digits, spaces, `-` and `_`. Kobo names come from today's `safe_filename`, with identical output.
-    - **Two Kobo books with the same name** are told apart by adding the author, then a short volume ID. The result is the same on every run, so `--skip-existing` keeps recognising earlier output.
+    - **Two Kobo books with the same name** are told apart by adding the author, then a short volume ID. The result depends only on the set of books, not their order, so it is the same on every run and `--skip-existing` keeps recognising earlier output. One exception: when a second book with the same name is added to Kobo later, the first one's name gains its author too, so its earlier plain-named file isn't recognised any more.
     - **Library naming templates:**
       - names are normalised to Unicode NFC, so macOS and Windows copies match
-      - characters Windows rejects are replaced, and trailing dots and spaces removed
+      - characters Windows rejects are replaced, and leading and trailing dots and spaces removed
       - reserved names (`CON`, `NUL`, `COM1`, …) are avoided
-      - each folder or file name is capped at 100 characters, and the full path is checked against Windows' 260-character limit (long-path support is used when enabled)
+      - each folder or file name is capped at 100 characters and 255 UTF-8 bytes, and the full path is checked against Windows' 260-character limit (long-path support is used when enabled)
     - The same rules apply when names are generated and when they are restored (§10.7).
 
 ## 6. Fixes during the rewrite
@@ -285,7 +286,7 @@ src/book_loader/
 - **Global options:** `--auth-dir` and `-v/--verbose` become global options. They are still accepted in their old place after `process` (`book-loader process x.acsm -v`); when given in both places, the value after the subcommand wins.
 - **Auth commands name their target.** Because a library is found from the current folder, `auth create`, `auth reset` and `auth restore` always print which authorization they act on: the folder, and whether it came from the flag, the environment variable, a library or the global default. The confirmation prompt repeats it. `auth reset --yes` still skips the question, but the target is still printed.
 - **`activation.dat`:** an `activation.dat`-only folder is reported as "ADE authorization, not usable yet"; `auth import-ade` is a future plan (§9.12).
-- **Conflicts:** `process` gets `--overwrite` / `--skip-existing` and prompts on conflicts, like Kobo already does. A new `rename` choice writes `Title (2).epub`.
+- **Conflicts:** `process` gets `--overwrite` / `--skip-existing` and prompts on conflicts, like Kobo already does. A new `rename` choice writes `Title (2).epub`. An output that doesn't exist yet is always written, so `--skip-existing` and a remembered "skip all" skip only books already there (§3).
 - **Kobo:**
   - `KoboLibrary` is a context manager, and the temporary database is always deleted.
   - ZIP files are closed with `with` blocks.
@@ -594,7 +595,11 @@ The per-book sidecar is the only record of the book; there is no central databas
 ```json
 {
   "version": 1,
-  "title": "…", "authors": ["…"], "language": "en",
+  "metadata": {
+    "title": "…", "authors": ["…"], "publisher": "…", "isbn": "9780306406157",
+    "language": "en", "year": 2024, "series": null,
+    "identifiers": [{ "scheme": "doi", "value": "…" }]
+  },
   "source": "adobe",
   "adobe": { "resource": "urn:uuid:…", "acsm_sha256": "…", "fulfilled_at": "…", "auth_fingerprint": "…" },
   "loan": null,
@@ -610,6 +615,7 @@ The per-book sidecar is the only record of the book; there is no central databas
 - **Duplicates:** the Adobe resource ID catches them. The same ACSM added twice is recognized, and a batch skips it.
 - **Speed:** if listing a big library gets slow, a cache index can be rebuilt from these files later.
 - **Unicode:** titles and names are stored in NFC.
+- **Metadata** comes from the OPF (or the Kobo database) and can be filled in or corrected later. Only the title is required. The ISBN is stored as bare digits after its check digit is verified; a source with an invalid ISBN keeps its other metadata and drops the ISBN. Identifiers other than the ISBN and the Adobe resource ID go in `identifiers`.
 
 ### 10.5 Commands
 ```

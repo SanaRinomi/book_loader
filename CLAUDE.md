@@ -34,7 +34,7 @@ uv run python -m book_loader.cli <command>
 uv run pytest
 
 # The local check: the gate for every refactor task (ruff, black --check,
-# pyright once configured, pytest with coverage; Python 3.11 then 3.14)
+# pyright, pytest with coverage; Python 3.11 then 3.14)
 uv run python tests/tools/check.py
 ```
 

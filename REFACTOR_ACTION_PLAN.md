@@ -280,48 +280,48 @@ acsm-calibre-plugin `bccca40` (2026-06-24, "Fix error message for accounts not y
 Goal: build the foundation pieces, each fully unit-tested. The old code doesn't use them yet, except redact (T2.12).
 
 ### T2.1 `domain/errors.py` (S)
-- [ ] **T2.1.1** Create `BookLoaderError(message, hint=None, step=None)` and the subclasses from `utils/errors.py`: `AuthorizationError`, `ACSMFulfillmentError`, `ManualDownloadRequired(reason, url, link_file, acsm_path, pending_id)`, `DRMRemovalError`, `KoboLibraryNotFoundError`, `KoboDecryptionError`. Add `ConversionError` with `CalibreNotFoundError`, `WeasyPrintUnavailableError` and `ConversionFailedError`, plus `ConfigError`, `LockedError`, `SecretUnavailableError`, `ArchiveError` and `LibraryError`.
-- [ ] **T2.1.2** Drop `WorkflowError`, which is never raised.
-- [ ] **T2.1.3** `ManualDownloadRequired`'s message mentions `--downloaded-file` and `pending resume <id>`.
+- [x] **T2.1.1** Create `BookLoaderError(message, hint=None, step=None)` and the subclasses from `utils/errors.py`: `AuthorizationError`, `ACSMFulfillmentError`, `ManualDownloadRequired(reason, url, link_file, acsm_path, pending_id)`, `DRMRemovalError`, `KoboLibraryNotFoundError`, `KoboDecryptionError`. Add `ConversionError` with `CalibreNotFoundError`, `WeasyPrintUnavailableError` and `ConversionFailedError`, plus `ConfigError`, `LockedError`, `SecretUnavailableError`, `ArchiveError` and `LibraryError`.
+- [x] **T2.1.2** Drop `WorkflowError`, which is never raised.
+- [x] **T2.1.3** `ManualDownloadRequired`'s message mentions `--downloaded-file` and `pending resume <id>`.
 - **Tests:** every error builds a message and a hint; `ManualDownloadRequired`'s message holds both finishing instructions and the link page path, and never the URL.
 
 ### T2.2 `domain/models.py`, `events.py`, `prompts.py` (M)
-- [ ] **T2.2.1** Create the models as frozen dataclasses:
+- [x] **T2.2.1** Create the models as frozen dataclasses:
   - `AuthType(StrEnum)` with `anonymous`, `adobe_id`, `ade_unusable`, `none`, `unknown`
   - `AuthInfo`
   - `BookFormat` (`epub`, `pdf`)
   - `ProcessRequest`, `ProcessResult`, `StepResult`
   - `BatchResult` with `exit_code`
-  - `BookRecord`, `PendingRecord`, `LoanRecord`
-- [ ] **T2.2.2** Create the typed events: `StepStarted`, `StepProgress(done, total)`, `StepNote`, `StepDone`, `StepFailed`, `Warning`, `ServerContact(kind, url)`, `Redirected(url)`, `Retrying(message)`. Add the `Reporter` protocol (`emit(event)`, plus `suspend()` returning a context manager).
-- [ ] **T2.2.3** Create the `Prompter` protocol: `manual_download`, `resolve_conflict`, `select_books`, `select_many`, `confirm`, `choose`, `text`, `secret`.
+  - `BookRecord` (holding a `BookMetadata`: title, authors, publisher, ISBN, language, year, series, other identifiers), `PendingRecord`, `LoanRecord`
+- [x] **T2.2.2** Create the typed events: `StepStarted`, `StepProgress(done, total)`, `StepNote`, `StepDone`, `StepFailed`, `Warning`, `ServerContact(kind, url)`, `Redirected(url)`, `Retrying(message)`. Add the `Reporter` protocol (`emit(event)`, plus `suspend()` returning a context manager).
+- [x] **T2.2.3** Create the `Prompter` protocol: `manual_download`, `resolve_conflict`, `select_books`, `select_many`, `confirm`, `choose`, `text`, `secret`.
 - **Tests:** model invariants (for example, `BatchResult.exit_code` is 0 only when nothing failed or is pending), and each event is immutable.
 
 ### T2.3 `domain/conflicts.py` and `retention.py` (S)
-- [ ] **T2.3.1** Port `ConflictAction` and the logic of `_resolve_file_conflict` into `ConflictResolver(policy, prompter, batch)`:
+- [x] **T2.3.1** Port `ConflictAction` and the logic of `_resolve_file_conflict` into `ConflictResolver(policy, prompter, batch)`:
   - `--overwrite` together with `--skip-existing` is invalid
-  - a remembered "all" choice wins
+  - a remembered "all" choice wins, but only for files that exist: a new output is always written (fixes the `--skip-existing` bug, REFACTOR_PLAN §3)
   - a single book gets a yes/no prompt, a batch gets the menu
   - cancel raises `OperationCancelled`
   - add the new `rename` choice
-- [ ] **T2.3.2** Create `RetentionPolicy.from_options(keep_encrypted, keep_epub, library_config)`. It returns which files the pipeline keeps, following REFACTOR_PLAN §7, including the one-release notice flag.
+- [x] **T2.3.2** Create `RetentionPolicy.from_options(to_pdf, keep_encrypted, keep_epub, move_acsm, library)`, where `library` is a `LibraryRetention` (`[output] formats`, `[keep] acsm`, `[keep] encrypted`) or None in plain mode. It returns which files the pipeline keeps, following REFACTOR_PLAN §7, including the one-release notice flag.
 - **Tests:**
   - table-driven tests covering every policy with single and batch runs, and remembered choices
   - every row of the §7 table for plain and library mode
   - the notice appears only for `--keep-encrypted --to-pdf` without `--keep-epub`
 
 ### T2.4 `infra/paths.py` (S)
-- [ ] **T2.4.1** Global folder per OS: `%LOCALAPPDATA%\book-loader\` on Windows (Known Folder API when the variable is unset), `~/.config/book-loader/` elsewhere. The auth folder is `adobe\` on Windows and `.adobe/` elsewhere. Add `logs/`, `backups/`, `config.toml` and `state.json` paths.
-- [ ] **T2.4.2** Old Windows location `~\.config\book-loader\.adobe\`: returned as the auth folder only when the new one doesn't exist and the old one does, with a flag so the CLI can show the notice.
+- [x] **T2.4.1** Global folder per OS: `%LOCALAPPDATA%\book-loader\` on Windows (Known Folder API when the variable is unset), `~/.config/book-loader/` elsewhere. The auth folder is `adobe\` on Windows and `.adobe/` elsewhere. Add `logs/`, `backups/`, `config.toml` and `state.json` paths.
+- [x] **T2.4.2** Old Windows location `~\.config\book-loader\.adobe\`: returned as the auth folder only when the new one doesn't exist and the old one does, with a flag so the CLI can show the notice.
 - **Tests:**
   - fake environments for Windows, macOS and Linux, including `LOCALAPPDATA` unset. The OS and environment are passed in, not read from the host, so all three run on Windows. Real macOS and Linux checks are deferred (D5).
   - the old-location fallback when only the old folder exists, when both exist, and when neither does
   - resolving paths never creates folders
 
 ### T2.5 `infra/settings.py` (M)
-- [ ] **T2.5.1** A generic lookup with layers: flag, env, local.toml, library.toml, global config.toml, default. It reads TOML with `tomllib`. The library layers return nothing until Phase 9 plugs them in. Each value records where it came from.
-- [ ] **T2.5.2** Auth folder resolution: `--auth-dir`, then `BOOK_LOADER_AUTH_DIR`, then the library, then global.
-- [ ] **T2.5.3** Settings never write to disk.
+- [x] **T2.5.1** A generic lookup with layers: flag, env, local.toml, library.toml, global config.toml, default. It reads TOML with `tomllib`. The library layers return nothing until Phase 9 plugs them in. Each value records where it came from.
+- [x] **T2.5.2** Auth folder resolution: `--auth-dir`, then `BOOK_LOADER_AUTH_DIR`, then the library, then global.
+- [x] **T2.5.3** Settings never write to disk.
 - **Tests:**
   - precedence for each layer with conflicting values
   - the source is reported correctly
@@ -329,15 +329,15 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - no folders or files are created (checked with a watched temp folder)
 
 ### T2.6 `infra/names.py` (M)
-- [ ] **T2.6.1** `kobo_plain_name(title)`: must reproduce `golden/safe_filename.json` exactly.
-- [ ] **T2.6.2** `disambiguate(name, author, volume_id)`: add the author, then an 8-character volume ID, the same way on every run.
-- [ ] **T2.6.3** `library_component(text)`:
+- [x] **T2.6.1** `kobo_plain_name(title)`: must reproduce `golden/safe_filename.json` exactly.
+- [x] **T2.6.2** `disambiguate(name, author, volume_id)`: add the author, then an 8-character volume ID, the same way on every run. `assign_kobo_names(books)` applies it to every group of colliding names (compared without case), so only the set of books decides the names, never their order.
+- [x] **T2.6.3** `library_component(text, suffix="")`:
   - converts to NFC
   - replaces characters Windows rejects
-  - removes trailing dots and spaces
-  - avoids reserved names (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`, with any extension)
-  - caps each name at 100 characters without splitting a character
-- [ ] **T2.6.4** `render_template(template, record)` for `{author}`, `{title}`, `{year}`, `{series}`. A path that would exceed 260 characters on Windows is shortened, or rejected when long-path support is off.
+  - removes leading and trailing dots and spaces (a leading dot would hide the file on macOS and Linux)
+  - avoids reserved names (`CON`, `PRN`, `AUX`, `NUL`, `CONIN$`, `CONOUT$`, `COM1`–`COM9`, `LPT1`–`LPT9`, and `COM¹`–`COM³`, `LPT¹`–`LPT³`, with any extension)
+  - caps each name at 100 characters and 255 UTF-8 bytes (the per-name limit on Linux and macOS) without splitting a character
+- [x] **T2.6.4** `render_template(template, metadata, suffix, base, max_path)` for `{author}`, `{title}`, `{year}`, `{series}`. A path longer than `max_path` (259 characters on Windows when long-path support is off, from `windows_long_paths_enabled()`) is shortened, or rejected when it can't fit.
 - **Tests:**
   - golden parity
   - the same duplicate name on every run
@@ -345,19 +345,19 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - reserved names and long-path cases
 
 ### T2.7 `infra/fs.py` (M)
-- [ ] **T2.7.1** `atomic_write(path)`: write to a temp file in the same folder, then `os.replace`.
-- [ ] **T2.7.2** `unique_path(path)`: adds ` (2)`, ` (3)` and so on.
-- [ ] **T2.7.3** `private_dir(path)`:
+- [x] **T2.7.1** `atomic_write(path)`: write to a temp file in the same folder, then `os.replace`. Text is written with `\n` line endings on every OS, so settings and records don't change when a library moves between systems.
+- [x] **T2.7.2** `unique_path(path)`: adds ` (2)`, ` (3)` and so on.
+- [x] **T2.7.3** `private_dir(path)`:
   - creates the folder with mode `0700` on POSIX (`posix_only` test, deferred D4)
-  - on Windows, checks that no broader permissions were added (read-only check)
+  - on Windows, checks that no broader permissions were added (read-only check): the folder's access list may not allow Everyone, Interactive users, Authenticated Users, Users, Guests or Anonymous Logon, matched by SID so the check works in any Windows language. It returns a warning naming them.
   - only called by code that writes
-- [ ] **T2.7.4** `retry_locked(fn)`: on Windows, retries `PermissionError` and sharing violations with backoff for about 2 seconds, then raises `LockedError` naming the file.
-- [ ] **T2.7.5** `Workspace(parent)`:
+- [x] **T2.7.4** `retry_locked(fn)`: on Windows, retries `PermissionError` and sharing violations with backoff for about 2 seconds, then raises `LockedError` naming the file.
+- [x] **T2.7.5** `Workspace(parent)`:
   - a hidden temp folder in `parent`
-  - `preserve(pattern, dest_resolver)`
+  - `preserve(pattern, dest_resolver)`; `preserved` maps each kept file to its new path, so error messages can be rewritten (T3.6.4)
   - on exit, runs the preserve rules, then removes the folder
-  - a locked file left inside produces a warning, not an error
-- [ ] **T2.7.6** `safe_move(src, dst)`: `os.replace` on the same drive; across drives, copy, fsync, check the hash, then delete the source.
+  - a locked file left inside produces a warning, not an error (collected in `warnings` and sent to the reporter)
+- [x] **T2.7.6** `safe_move(src, dst)`: `os.replace` on the same drive; across drives, copy, fsync, check the hash, then delete the source.
 - **Tests:**
   - an interrupted atomic write leaves the old file intact
   - `unique_path` sequences
@@ -366,10 +366,10 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - a cross-drive move simulated by forcing the copy path
 
 ### T2.8 `infra/locks.py` (S)
-- [ ] **T2.8.1** `Lock(path, timeout)`:
-  - created atomically (`O_CREAT|O_EXCL`), holding the process ID, host name and start time
-  - stale when that process is gone on the same host
-  - `LockedError` after the timeout
+- [x] **T2.8.1** `Lock(path, timeout)`:
+  - created atomically (`O_CREAT|O_EXCL`), holding the process ID, host name and start time (plus a random token, so a run only ever removes its own lock, and an optional purpose shown to a run that waits)
+  - stale when that process is gone on the same host; a lock from another host is never judged stale. Breaking a stale lock is guarded by a `.break` file, so two runs can't both break it and remove each other's new lock
+  - `LockedError` after the timeout, naming the holder and saying which file to delete if no other run is going
 - **Tests:**
   - two locks: the second waits and then fails
   - a stale lock from a dead process ID is taken over
@@ -377,11 +377,12 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - a real subprocess holds a lock (both OSes; the POSIX run and stale-lock detection on POSIX are deferred, D8)
 
 ### T2.9 `infra/secrets.py` (S)
-- [ ] **T2.9.1** `resolve_secret(kind, file_opt, stdin_flag, env_var, legacy_value, prompter, interactive)`:
-  - applies the orders from REFACTOR_PLAN §9.9 and §10.7
+- [x] **T2.9.1** `resolve_secret(kind, env, file, use_stdin, legacy_value, prompter, interactive, stdin_taken_by)`:
+  - applies the orders from REFACTOR_PLAN §9.9 and §10.7. `kind` is the Adobe ID password, a new backup passphrase (asked twice; the hint mentions `--no-encrypt`), or the passphrase of an existing backup (asked once)
   - `--password` returns a warning to show
   - raises `SecretUnavailableError` with hints when nothing is available
-- [ ] **T2.9.2** A secret is never included in `repr` or exceptions: wrap it in a `Secret` type.
+  - `--password-stdin` / `--passphrase-stdin` read exactly one line, and refuse a terminal (no piped input), extra lines, and another option that also reads stdin
+- [x] **T2.9.2** A secret is never included in `repr` or exceptions: wrap it in a `Secret` type. It is also masked in f-strings, compares in constant time, and refuses to be pickled.
 - **Tests:**
   - every source order
   - `--password-stdin` combined with other input on stdin gives an error
@@ -389,11 +390,11 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - `str(Secret)` and `repr(Secret)` are masked
 
 ### T2.10 `infra/logging.py` (M)
-- [ ] **T2.10.1** `capture_vendored_print(logger)`: a context manager that sends vendored `print()` lines to the logger at DEBUG instead of swallowing them.
-- [ ] **T2.10.2** A redaction filter on the handler: every record's message and arguments go through `redact_text`, and URLs through `redact_url`.
-- [ ] **T2.10.3** `setup_run_logging(logs_dir, keep_days, extra_file, enabled)`:
-  - rotates `latest-book-loader.log` to `book-loader-<start time>.log`
-  - falls back to `latest-book-loader-<pid>.log` when the file is locked
+- [x] **T2.10.1** `capture_vendored_print(logger)`: a context manager that sends vendored `print()` lines to the logger at DEBUG instead of swallowing them.
+- [x] **T2.10.2** A redaction filter on the handler: every record's message and arguments go through `redact_text`, and URLs through `redact_url`. Tracebacks too. It also blanks every password or passphrase registered with `register_secret` (the CLI registers each one `resolve_secret` returns) and text like `password=…` or `<password>…</password>`, so `redact.py` and its golden values stay unchanged.
+- [x] **T2.10.3** `setup_run_logging(logs_dir, keep_days, extra_file, enabled)`:
+  - rotates `latest-book-loader.log` to `book-loader-<start time>.log`; the start time is read from the log's first line, which each run writes
+  - falls back to `latest-book-loader-<pid>.log` when the file is locked: a `Lock` (T2.8) marks which run owns it, which works on every OS, and a rename that fails still falls back
   - deletes `*.log` and `download_error*.html` older than `keep_days`
   - `keep_days = 0` keeps everything
 - **Tests:**
@@ -404,20 +405,20 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - vendored `print` output reaches the log
 
 ### T2.11 `infra/archive.py` (L)
-- [ ] **T2.11.1** Writer:
-  - a tar stream with `manifest.json` as its first member
-  - gzip, or xz on request
+- [x] **T2.11.1** Writer:
+  - a tar stream with `manifest.json` as its first member (the caller's metadata plus each file's size and SHA-256)
+  - gzip, or xz on request; without encryption it is an ordinary `.tar.gz` / `.tar.xz`
   - written to a temp file and renamed, with mode `0600`
-- [ ] **T2.11.2** Encryption layer:
-  - header: magic bytes, format version, scrypt settings, salt
-  - AES-256-GCM in 1 MiB chunks, each with its own nonce and tag
+- [x] **T2.11.2** Encryption layer:
+  - header: magic bytes, format version, scrypt settings, salt; also a key-check value (so a wrong passphrase is told apart from damage) and a header checksum. Settings beyond N = 2^20, r = 16, p = 4 are refused, so a crafted file can't exhaust memory
+  - AES-256-GCM in 1 MiB chunks, each with its own nonce and tag; the header is authenticated with every chunk
   - the chunk index is bound into each chunk, and a final-chunk flag prevents truncation
-- [ ] **T2.11.3** Reader:
+- [x] **T2.11.3** Reader:
   - detects encryption from the header
   - `read_manifest()` without extracting everything
-  - `extract(members, dest)` with `filter="data"`, rejecting absolute paths and `..`, applying `names.library_component` rules, and detecting case collisions
+  - `extract(dest, select)` with `filter="data"`, rejecting absolute paths and `..`, applying `names.library_component` rules, and detecting case collisions. Only regular files are written (links and devices are refused), nothing existing is overwritten, and renamed entries are reported
   - checks every file's SHA-256 against the manifest
-- [ ] **T2.11.4** Reader for original archives: plain `.tar.gz` files with a single top folder of any name.
+- [x] **T2.11.4** Reader for original archives: plain `.tar.gz` files with a single top folder of any name.
 - **Tests:**
   - round trips, plain and encrypted
   - wrong passphrase
@@ -431,20 +432,20 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - a v0 fixture archive from T0.4.4 is read
 
 ### T2.12 Move `redact.py` (S)
-- [ ] **T2.12.1** `git mv utils/redact.py infra/redact.py`. Leave `utils/redact.py` re-exporting it until Phase 6.
-- [ ] **T2.12.2** Change the import in `libadobe.py` and `libadobeFulfill.py` to `from ...infra.redact import …`: the one allowed vendored edit in this phase. Update `MANIFEST.sha256` and `PATCHES.md`.
+- [x] **T2.12.1** `git mv utils/redact.py infra/redact.py`. Leave `utils/redact.py` re-exporting it until Phase 6. Point `infra/logging.py` at `.redact` and remove its entry from `TEMPORARY` in `tests/unit/test_layering.py`.
+- [x] **T2.12.2** Change the import in `libadobe.py` and `libadobeFulfill.py` to `from ...infra.redact import …`: the one allowed vendored edit in this phase. Update `MANIFEST.sha256` and `PATCHES.md`.
 - **Tests:** the T0.4.1 golden tests are moved to point at `infra.redact`, the characterization suite passes, and the vendor guard passes after the manifest update.
 
 ### T2.13 `infra/known_dirs.py` (S)
-- [ ] **T2.13.1** Find the Downloads folder:
+- [x] **T2.13.1** Find the Downloads folder (`downloads_dir(host, override)`, which also says where the folder came from):
   - Windows: `SHGetKnownFolderPath(FOLDERID_Downloads)` via `ctypes`
-  - Linux: the `XDG_DOWNLOAD_DIR` entry in `~/.config/user-dirs.dirs`
+  - Linux: the `XDG_DOWNLOAD_DIR` entry in `~/.config/user-dirs.dirs` (in `$XDG_CONFIG_HOME` when that is set, as the xdg-user-dirs tools do)
   - macOS and fallback: `~/Downloads`
-  - an override from settings
+  - an override from settings (`~` means the home folder)
 - **Tests:** a parser test for `user-dirs.dirs`; `windows_only`, the Known Folder result is an existing folder; the override wins. A real Linux desktop and macOS are deferred (D5).
 
 ### T2.14 Type checking (S)
-- [ ] **T2.14.1** Add a pyright config that checks `domain`, `infra` and each new package as it appears. The old `core`, `utils` and `cli.py` are excluded until they're deleted, and `_vendor` is always excluded. Add it to the local check (T0.5.4), which the CI workflow also runs.
+- [x] **T2.14.1** Add a pyright config that checks `domain`, `infra` and each new package as it appears. The old `core`, `utils` and `cli.py` are excluded until they're deleted, and `_vendor` is always excluded. Add it to the local check (T0.5.4), which the CI workflow also runs. The config is `[tool.pyright]` in `pyproject.toml`: it checks all of `src/book_loader` (so a new package is checked from its first file) and the tests, leaving out the characterization tests of the old code. Libraries without type information (`asn1crypto`) count as untyped (`useLibraryCodeForTypes = false`), and `lxml-stubs` joins the dev group for `lxml`.
 - **Tests:** the local check runs pyright. It fails on a deliberate type error, which is then reverted.
 
 **Phase 2 exit:** every infra and domain module is fully tested, with at least 90% line coverage for these packages. The old CLI is unchanged, apart from where it imports redact.
@@ -457,9 +458,9 @@ Goal: all Adobe-side code rebuilt on the new foundation, tested with fixtures an
 ### T3.1 `epub/inspect.py` (S)
 It comes first because T3.7 and Phase 11 use it.
 - [ ] **T3.1.1** `sniff(path)` returns `epub`, `pdf`, `html` or `unknown` from the first bytes: `PK`, `%PDF`, or `<!doctype html` / `<html` after trimming whitespace and a BOM.
-- [ ] **T3.1.2** `read_opf(epub)` returns the title, authors, language, identifiers and spine, via `container.xml`.
+- [ ] **T3.1.2** `read_opf(epub)` returns a `BookMetadata` (title, authors, publisher, ISBN through `normalize_isbn`, language, year, series, other identifiers) and the spine, via `container.xml`.
 - [ ] **T3.1.3** `is_adept_encrypted(path)`: an EPUB with `META-INF/rights.xml`, or a PDF with `/EBX_HANDLER`.
-- **Tests:** built EPUBs (normal, with a BOM, several identifiers, broken container), ADEPT EPUBs from T0.4.6, the tiny PDF from T0.4.7, and saved HTML check pages.
+- **Tests:** built EPUBs (normal, with a BOM, several identifiers, an ISBN in each common form, an invalid ISBN that is dropped, a publisher, broken container), ADEPT EPUBs from T0.4.6, the tiny PDF from T0.4.7, and saved HTML check pages.
 
 ### T3.2 `adobe/store.py`: AuthStore (M)
 - [ ] **T3.2.1** The file layout. `status()` returns an `AuthInfo` with the type, email, device UUID and key fingerprint, parsing `activation.xml` once and caching it. An `activation.dat`-only folder gives `ade_unusable`.
@@ -672,6 +673,7 @@ It comes first because T3.7 and Phase 11 use it.
 - [ ] **T5.3.2** `ConvertService`: refuses to write over its own input and applies the conflict policy to an existing PDF.
 - **Tests:**
   - a batch mixing success, skip, failure, not downloaded, and cancel, with the right exit codes
+  - the T0.4.9 strict xfail is ported and must now pass: `--skip-existing` decrypts the books not yet in the output folder
   - convert refuses `-o` equal to the input
   - convert applies the conflict policy
 
@@ -1040,6 +1042,7 @@ P0 ─► P1 ─► P2 ─┬─► P3 (T3.1 before T3.7) ─┐
 |---|---|---|
 | Restore into a folder with a different name (strict xfail) | T0.4.4 | T3.8 |
 | `--to-pdf` keeps an existing `Title.epub` (strict xfail) | T0.4.8 | T5.1 |
+| `kobo dedrm --skip-existing` decrypts books not yet there (strict xfail, added in T2.3) | T0.4.9 | T5.3 |
 | Help option parity | T0.3 | every phase |
 | `safe_filename` golden values | T0.4.2 | every phase (via `names.kobo_plain_name` from T2.6) |
 | Kobo key vectors | T0.4.3 | every phase |
