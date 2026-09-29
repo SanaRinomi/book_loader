@@ -77,4 +77,5 @@ dev = [
     "pytest>=9.0.2",
     "pytest-cov>=7.1.0",
     "ruff>=0.15.1",
+    "time-machine>=3.5.1",
 ]

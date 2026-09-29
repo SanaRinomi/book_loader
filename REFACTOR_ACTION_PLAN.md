@@ -78,8 +78,8 @@ Goal: pin today's behaviour in tests and set up tooling and CI before any code m
   - On Python 3.10, `pip install .` is refused (checked by hand once).
 
 ### T0.2 Test scaffolding (S)
-- [ ] **T0.2.1** Create the `tests/` tree above.
-- [ ] **T0.2.2** Write the `conftest.py` fixtures:
+- [x] **T0.2.1** Create the `tests/` tree above.
+- [x] **T0.2.2** Write the `conftest.py` fixtures:
   - `tmp_home`: points `HOME`, `USERPROFILE` and `LOCALAPPDATA` at a temp folder.
   - `auth_dir`: an empty auth folder, with `BOOK_LOADER_AUTH_DIR` set to it.
   - `downloads_dir`
