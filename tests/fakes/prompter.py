@@ -13,8 +13,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, TypeVar
 
+from book_loader.domain.conflicts import ConflictAction
 from book_loader.domain.errors import BookLoaderError, ManualDownloadRequired
-from book_loader.domain.models import ConflictAction
 from book_loader.domain.prompts import Choice
 
 T = TypeVar("T")

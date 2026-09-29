@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from book_loader.domain.conflicts import ConflictPolicy
 from book_loader.domain.models import (
     AdobeSource,
     AuthInfo,
@@ -21,7 +22,6 @@ from book_loader.domain.models import (
     BookLoan,
     BookMetadata,
     BookRecord,
-    ConflictAction,
     Identifier,
     ItemStatus,
     LoanRecord,
@@ -155,17 +155,6 @@ class TestBookFormat:
         assert BookFormat.PDF.suffix == ".pdf"
 
 
-def test_conflict_actions():
-    assert {action.value for action in ConflictAction} == {
-        "overwrite",
-        "skip",
-        "rename",
-        "overwrite_all",
-        "skip_all",
-        "cancel",
-    }
-
-
 class TestProcess:
     def test_request_defaults_match_0_1_0(self):
         request = ProcessRequest(Path("book.acsm"), Path("out"))
@@ -174,6 +163,7 @@ class TestProcess:
         )
         assert request.settings.keep_epub is False
         assert request.downloaded_file is None
+        assert request.conflicts is ConflictPolicy.ASK
 
     def test_result(self):
         result = ProcessResult(

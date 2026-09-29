@@ -91,6 +91,7 @@ What this changes:
   - `KoboLibrary.close()` isn't called when an error happens, which leaves a copy of the database, including purchase keys, in the system temp folder.
   - ZIP files aren't closed on errors.
   - Two books with the same title get the same file name.
+  - `kobo dedrm --skip-existing` skips every book, including ones not yet in the output folder: the remembered "skip all" is applied before checking that the file exists ([cli.py:57](src/book_loader/cli.py#L57)). Found 2026-09-29 during T2.3.
   - `_unpad` doesn't check the padding, so a wrong key can pass as a right one.
   - The raw-byte database copy misses changes still in the WAL file while Kobo Desktop is open.
   - It only works on macOS (`/sbin/ifconfig`).
@@ -285,7 +286,7 @@ src/book_loader/
 - **Global options:** `--auth-dir` and `-v/--verbose` become global options. They are still accepted in their old place after `process` (`book-loader process x.acsm -v`); when given in both places, the value after the subcommand wins.
 - **Auth commands name their target.** Because a library is found from the current folder, `auth create`, `auth reset` and `auth restore` always print which authorization they act on: the folder, and whether it came from the flag, the environment variable, a library or the global default. The confirmation prompt repeats it. `auth reset --yes` still skips the question, but the target is still printed.
 - **`activation.dat`:** an `activation.dat`-only folder is reported as "ADE authorization, not usable yet"; `auth import-ade` is a future plan (§9.12).
-- **Conflicts:** `process` gets `--overwrite` / `--skip-existing` and prompts on conflicts, like Kobo already does. A new `rename` choice writes `Title (2).epub`.
+- **Conflicts:** `process` gets `--overwrite` / `--skip-existing` and prompts on conflicts, like Kobo already does. A new `rename` choice writes `Title (2).epub`. An output that doesn't exist yet is always written, so `--skip-existing` and a remembered "skip all" skip only books already there (§3).
 - **Kobo:**
   - `KoboLibrary` is a context manager, and the temporary database is always deleted.
   - ZIP files are closed with `with` blocks.

@@ -20,6 +20,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
+from .conflicts import ConflictPolicy
+
 __all__ = [
     "AdobeSource",
     "AuthInfo",
@@ -32,7 +34,6 @@ __all__ = [
     "BookLoan",
     "BookMetadata",
     "BookRecord",
-    "ConflictAction",
     "Identifier",
     "ItemStatus",
     "LoanRecord",
@@ -140,17 +141,6 @@ class BookFormat(StrEnum):
             raise ValueError(f"not an EPUB or PDF file name: {path.name}") from None
 
 
-class ConflictAction(StrEnum):
-    """An answer to "the output file already exists". ``ConflictResolver`` (T2.3) acts on it."""
-
-    OVERWRITE = "overwrite"
-    SKIP = "skip"
-    RENAME = "rename"
-    OVERWRITE_ALL = "overwrite_all"
-    SKIP_ALL = "skip_all"
-    CANCEL = "cancel"
-
-
 @dataclass(frozen=True)
 class OutputSettings:
     """What ``process`` makes from a book. Pending records keep these for ``pending resume``."""
@@ -170,6 +160,7 @@ class ProcessRequest:
     output_dir: Path
     settings: OutputSettings = OutputSettings()
     downloaded_file: Path | None = None
+    conflicts: ConflictPolicy = ConflictPolicy.ASK
 
 
 class StepStatus(StrEnum):

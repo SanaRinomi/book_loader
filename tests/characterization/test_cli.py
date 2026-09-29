@@ -14,8 +14,10 @@ import pytest
 from book_loader.cli import cli
 from book_loader.core.adobe.fulfill import ACSMFulfiller
 from book_loader.core.drm.remover import DRMRemover
+from book_loader.core.kobo import KoboLibrary
 from book_loader.utils.errors import ManualDownloadRequired
 from tests.fixtures.builders.adobe_auth import build_auth_folder
+from tests.fixtures.builders.kobo import FAKE_MAC, KoboBookSpec, build_kobo_library
 
 
 @pytest.fixture
@@ -100,6 +102,40 @@ class TestKobo:
         result = cli_runner.invoke(cli, ["kobo", "dedrm", "--overwrite", "--skip-existing"])
         assert result.exit_code == 1
         assert "--overwrite and --skip-existing cannot be used together" in result.stderr
+
+    @pytest.fixture
+    def kobo_source(self, tmp_path, monkeypatch):
+        source = tmp_path / "Kobo Desktop Edition"
+        build_kobo_library(
+            source,
+            [KoboBookSpec("vol-alpha", "Alpha Book"), KoboBookSpec("vol-beta", "Beta Book")],
+        )
+        monkeypatch.setattr(KoboLibrary, "_get_mac_addrs", lambda self: [FAKE_MAC])
+        return source
+
+    def test_overwrite_decrypts_every_book(self, cli_runner, kobo_source, tmp_path):
+        out = tmp_path / "out"
+        args = ["kobo", "--source", str(kobo_source), "dedrm", "--all", "--overwrite"]
+        result = cli_runner.invoke(cli, [*args, "-o", str(out)])
+        assert result.exit_code == 0, result.output
+        assert sorted(p.name for p in out.iterdir()) == ["Alpha Book.epub", "Beta Book.epub"]
+
+    @pytest.mark.xfail(
+        strict=True,
+        raises=AssertionError,
+        reason="0.1.0 applies the remembered skip_all before checking that the file exists, "
+        "so --skip-existing skips every book (REFACTOR_PLAN §3). The port of this test "
+        "to KoboService (T5.3) must pass.",
+    )
+    def test_skip_existing_decrypts_books_not_yet_there(self, cli_runner, kobo_source, tmp_path):
+        out = tmp_path / "out"
+        out.mkdir()
+        (out / "Alpha Book.epub").write_bytes(b"earlier output")
+        args = ["kobo", "--source", str(kobo_source), "dedrm", "--all", "--skip-existing"]
+        result = cli_runner.invoke(cli, [*args, "-o", str(out)])
+        assert result.exit_code == 0, result.output
+        assert (out / "Alpha Book.epub").read_bytes() == b"earlier output"
+        assert (out / "Beta Book.epub").exists()
 
 
 class TestConvert:

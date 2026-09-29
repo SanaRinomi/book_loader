@@ -16,8 +16,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Generic, Protocol, TypeVar
 
+from .conflicts import ConflictAction
 from .errors import BookLoaderError, ManualDownloadRequired
-from .models import ConflictAction
 
 __all__ = ["Choice", "Prompter"]
 

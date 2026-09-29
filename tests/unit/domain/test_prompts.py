@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from book_loader.domain.conflicts import ConflictAction
 from book_loader.domain.errors import ManualDownloadRequired, OperationCancelled
-from book_loader.domain.models import ConflictAction
 from book_loader.domain.prompts import Choice, Prompter
 from tests.fakes.prompter import FakePrompter
 

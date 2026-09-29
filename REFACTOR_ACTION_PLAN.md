@@ -298,13 +298,13 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
 - **Tests:** model invariants (for example, `BatchResult.exit_code` is 0 only when nothing failed or is pending), and each event is immutable.
 
 ### T2.3 `domain/conflicts.py` and `retention.py` (S)
-- [ ] **T2.3.1** Port `ConflictAction` and the logic of `_resolve_file_conflict` into `ConflictResolver(policy, prompter, batch)`:
+- [x] **T2.3.1** Port `ConflictAction` and the logic of `_resolve_file_conflict` into `ConflictResolver(policy, prompter, batch)`:
   - `--overwrite` together with `--skip-existing` is invalid
-  - a remembered "all" choice wins
+  - a remembered "all" choice wins, but only for files that exist: a new output is always written (fixes the `--skip-existing` bug, REFACTOR_PLAN §3)
   - a single book gets a yes/no prompt, a batch gets the menu
   - cancel raises `OperationCancelled`
   - add the new `rename` choice
-- [ ] **T2.3.2** Create `RetentionPolicy.from_options(keep_encrypted, keep_epub, library_config)`. It returns which files the pipeline keeps, following REFACTOR_PLAN §7, including the one-release notice flag.
+- [x] **T2.3.2** Create `RetentionPolicy.from_options(to_pdf, keep_encrypted, keep_epub, move_acsm, library)`, where `library` is a `LibraryRetention` (`[output] formats`, `[keep] acsm`, `[keep] encrypted`) or None in plain mode. It returns which files the pipeline keeps, following REFACTOR_PLAN §7, including the one-release notice flag.
 - **Tests:**
   - table-driven tests covering every policy with single and batch runs, and remembered choices
   - every row of the §7 table for plain and library mode
@@ -672,6 +672,7 @@ It comes first because T3.7 and Phase 11 use it.
 - [ ] **T5.3.2** `ConvertService`: refuses to write over its own input and applies the conflict policy to an existing PDF.
 - **Tests:**
   - a batch mixing success, skip, failure, not downloaded, and cancel, with the right exit codes
+  - the T0.4.9 strict xfail is ported and must now pass: `--skip-existing` decrypts the books not yet in the output folder
   - convert refuses `-o` equal to the input
   - convert applies the conflict policy
 
@@ -1040,6 +1041,7 @@ P0 ─► P1 ─► P2 ─┬─► P3 (T3.1 before T3.7) ─┐
 |---|---|---|
 | Restore into a folder with a different name (strict xfail) | T0.4.4 | T3.8 |
 | `--to-pdf` keeps an existing `Title.epub` (strict xfail) | T0.4.8 | T5.1 |
+| `kobo dedrm --skip-existing` decrypts books not yet there (strict xfail, added in T2.3) | T0.4.9 | T5.3 |
 | Help option parity | T0.3 | every phase |
 | `safe_filename` golden values | T0.4.2 | every phase (via `names.kobo_plain_name` from T2.6) |
 | Kobo key vectors | T0.4.3 | every phase |
