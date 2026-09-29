@@ -44,7 +44,9 @@ _TAG_RE = re.compile(
 )
 _LONG_NUMBER_RE = re.compile(r"\b\d{12,}\b")  # numeric account IDs, e.g. Google user IDs
 _VERSION_SEGMENT_RE = re.compile(r"^\d{1,3}(?:\.\d{1,3}){0,2}$")  # e.g. "1.1" in namespace URLs
-_UUID_RE = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+_UUID_RE = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
 _EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 _IPV4_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 _IPV6_RE = re.compile(

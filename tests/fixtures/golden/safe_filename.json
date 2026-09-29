@@ -1,0 +1,214 @@
+[
+  {
+    "title": "Simple Title",
+    "filename": "Simple Title.epub"
+  },
+  {
+    "title": "The Lord of the Rings",
+    "filename": "The Lord of the Rings.epub"
+  },
+  {
+    "title": "A",
+    "filename": "A.epub"
+  },
+  {
+    "title": "1984",
+    "filename": "1984.epub"
+  },
+  {
+    "title": "  Leading and trailing spaces  ",
+    "filename": "Leading and trailing spaces.epub"
+  },
+  {
+    "title": "Tabs\tand\nnewlines",
+    "filename": "Tabs\tand\nnewlines.epub"
+  },
+  {
+    "title": "Harry Potter & the Philosopher's Stone",
+    "filename": "Harry Potter _ the Philosopher_s Stone.epub"
+  },
+  {
+    "title": "What? Why! How.",
+    "filename": "What_ Why_ How_.epub"
+  },
+  {
+    "title": "C++ Primer (5th Edition)",
+    "filename": "C__ Primer _5th Edition_.epub"
+  },
+  {
+    "title": "Title: Subtitle",
+    "filename": "Title_ Subtitle.epub"
+  },
+  {
+    "title": "Part 1/2",
+    "filename": "Part 1_2.epub"
+  },
+  {
+    "title": "Back\\slash",
+    "filename": "Back_slash.epub"
+  },
+  {
+    "title": "Quotes \"double\" and 'single'",
+    "filename": "Quotes _double_ and _single_.epub"
+  },
+  {
+    "title": "Pipe | Star * Less < More >",
+    "filename": "Pipe _ Star _ Less _ More _.epub"
+  },
+  {
+    "title": "Hash #1 and 100%",
+    "filename": "Hash _1 and 100_.epub"
+  },
+  {
+    "title": "Dots... and --- dashes",
+    "filename": "Dots___ and ___ dashes.epub"
+  },
+  {
+    "title": "under_score",
+    "filename": "under_score.epub"
+  },
+  {
+    "title": "Semi;colon,comma",
+    "filename": "Semi_colon_comma.epub"
+  },
+  {
+    "title": "[Brackets] {Braces}",
+    "filename": "_Brackets_ _Braces_.epub"
+  },
+  {
+    "title": "Money $5 @ home",
+    "filename": "Money _5 _ home.epub"
+  },
+  {
+    "title": "Plus+Equals=Tilde~Caret^Backtick`",
+    "filename": "Plus_Equals_Tilde_Caret_Backtick_.epub"
+  },
+  {
+    "title": "R.U.R.",
+    "filename": "R_U_R_.epub"
+  },
+  {
+    "title": "trailing dot.",
+    "filename": "trailing dot_.epub"
+  },
+  {
+    "title": "!!!",
+    "filename": "___.epub"
+  },
+  {
+    "title": "...",
+    "filename": "___.epub"
+  },
+  {
+    "title": "CON",
+    "filename": "CON.epub"
+  },
+  {
+    "title": "nul",
+    "filename": "nul.epub"
+  },
+  {
+    "title": "三體",
+    "filename": "三體.epub"
+  },
+  {
+    "title": "ノルウェイの森",
+    "filename": "ノルウェイの森.epub"
+  },
+  {
+    "title": "해리 포터",
+    "filename": "해리 포터.epub"
+  },
+  {
+    "title": "中文：標題（上冊）",
+    "filename": "中文_標題_上冊_.epub"
+  },
+  {
+    "title": "書名/副書名",
+    "filename": "書名_副書名.epub"
+  },
+  {
+    "title": "Les Misérables",
+    "filename": "Les Misérables.epub"
+  },
+  {
+    "title": "Über den Fluß",
+    "filename": "Über den Fluß.epub"
+  },
+  {
+    "title": "Crème brûlée",
+    "filename": "Crème brûlée.epub"
+  },
+  {
+    "title": "Ångström",
+    "filename": "Ångström.epub"
+  },
+  {
+    "title": "Ελληνικά",
+    "filename": "Ελληνικά.epub"
+  },
+  {
+    "title": "Русский текст",
+    "filename": "Русский текст.epub"
+  },
+  {
+    "title": "كتاب",
+    "filename": "كتاب.epub"
+  },
+  {
+    "title": "ספר",
+    "filename": "ספר.epub"
+  },
+  {
+    "title": "हिन्दी",
+    "filename": "ह_न_द_.epub"
+  },
+  {
+    "title": "Café (combining accent)",
+    "filename": "Cafe_ _combining accent_.epub"
+  },
+  {
+    "title": "Emoji 📚 Book",
+    "filename": "Emoji _ Book.epub"
+  },
+  {
+    "title": "🙂",
+    "filename": "_.epub"
+  },
+  {
+    "title": "Family 👨‍👩‍👧",
+    "filename": "Family _____.epub"
+  },
+  {
+    "title": "Zero​Width",
+    "filename": "Zero_Width.epub"
+  },
+  {
+    "title": "No Break",
+    "filename": "No Break.epub"
+  },
+  {
+    "title": "ＡＢＣ１２３",
+    "filename": "ＡＢＣ１２３.epub"
+  },
+  {
+    "title": "Ⅻ and x²",
+    "filename": "Ⅻ and x².epub"
+  },
+  {
+    "title": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "filename": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA.epub"
+  },
+  {
+    "title": "Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title ",
+    "filename": "Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title Very long title.epub"
+  },
+  {
+    "title": "",
+    "filename": ".epub"
+  },
+  {
+    "title": "   ",
+    "filename": ".epub"
+  }
+]

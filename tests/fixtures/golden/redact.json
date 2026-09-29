@@ -1,0 +1,206 @@
+{
+  "urls": [
+    {
+      "input": "",
+      "output": ""
+    },
+    {
+      "input": "not a url",
+      "output": "<hidden:9>"
+    },
+    {
+      "input": "http://[invalid",
+      "output": "<hidden url>"
+    },
+    {
+      "input": "https://acs.example.com/fulfillment/Fulfill",
+      "output": "https://acs.example.com/fulfillment/Fulfill"
+    },
+    {
+      "input": "http://adeactivate.adobe.com/adept/SignInDirect",
+      "output": "http://adeactivate.adobe.com/adept/SignInDirect"
+    },
+    {
+      "input": "https://adeactivate.adobe.com/adept/InitLicenseService",
+      "output": "https://adeactivate.adobe.com/adept/InitLicenseService"
+    },
+    {
+      "input": "https://acs4.example.org/fulfillment/URLLink.acsm?action=enterorder&ordersource=Store&orderid=1234567890&resid=urn%3Auuid%3A33333333-3333-4333-8333-333333333333&gbauthdate=09%2F28%2F2026&dateval=1790000000&gblver=4&auth=0a1b2c3d4e5f60718293a4b5c6d7e8f9",
+      "output": "https://acs4.example.org/fulfillment/<hidden:7>.acsm?action=<hidden:10>&ordersource=<hidden:5>&orderid=<hidden:10>&resid=<hidden:49>&gbauthdate=<hidden:14>&dateval=<hidden:10>&gblver=<hidden:1>&auth=<hidden:32>"
+    },
+    {
+      "input": "https://books.googleusercontent.com/download/ebook/AbCdEfGhIjKlMnOp/9780000000001.epub?id=AbCdEfGh123&output=epub&source=gbs_api&sig=ACfU3U0aBcDeFgHiJkLmNoPqRsTuVwXyZ",
+      "output": "https://books.googleusercontent.com/download/ebook/<hidden:16>/<hidden:13>.epub?id=<hidden:11>&output=epub&source=gbs_api&sig=<hidden:33>"
+    },
+    {
+      "input": "https://download.example.com/books/test-book.epub?id=AbCdEf123456&amp;output=epub&amp;sig=ZmFrZXNpZ25hdHVyZXZhbHVl",
+      "output": "https://download.example.com/books/<hidden:9>.epub?id=<hidden:12>&amp;output=epub&amp;sig=<hidden:24>"
+    },
+    {
+      "input": "https://example.com:8443/books/My%20Secret%20Title.pdf#page=3",
+      "output": "https://example.com:8443/books/<hidden:19>.pdf#<hidden:6>"
+    },
+    {
+      "input": "https://reader:secret@example.com/private/area",
+      "output": "https://example.com/private/area"
+    },
+    {
+      "input": "http://192.168.1.20/books/x.epub",
+      "output": "http://192.168.1.20/books/<hidden:1>.epub"
+    },
+    {
+      "input": "http://ns.adobe.com/adept/1.1",
+      "output": "http://ns.adobe.com/adept/1.1"
+    },
+    {
+      "input": "https://example.com/a/UPPER/lower/12345/verylongpathsegmentname/file.tar.gz",
+      "output": "https://example.com/a/<hidden:5>/lower/<hidden:5>/<hidden:23>/<hidden:8>.gz"
+    },
+    {
+      "input": "https://example.com/?format=pdf&type=book&hl=en&token=abc&Output=EPUB",
+      "output": "https://example.com/?format=pdf&type=book&hl=en&token=<hidden:3>&Output=EPUB"
+    },
+    {
+      "input": "https://example.com/path/;params?q=1",
+      "output": "https://example.com/path/<hidden:7>?q=<hidden:1>"
+    }
+  ],
+  "headers": [
+    {
+      "name": "Set-Cookie",
+      "value": "SID=abcdef0123456789; Path=/; HttpOnly",
+      "output": "<hidden:38>"
+    },
+    {
+      "name": "Cookie",
+      "value": "NID=511=abcdef; 1P_JAR=2026-09-28",
+      "output": "<hidden:33>"
+    },
+    {
+      "name": "Authorization",
+      "value": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.c2lnbmF0dXJl",
+      "output": "<hidden:60>"
+    },
+    {
+      "name": "Proxy-Authorization",
+      "value": "Basic dXNlcjpwYXNz",
+      "output": "<hidden:18>"
+    },
+    {
+      "name": "Location",
+      "value": "https://download.example.com/books/test-book.epub?id=AbCdEf123456&output=epub",
+      "output": "https://download.example.com/books/<hidden:9>.epub?id=<hidden:12>&output=epub"
+    },
+    {
+      "name": "Content-Location",
+      "value": "https://example.com/secret/Title.epub",
+      "output": "https://example.com/secret/<hidden:5>.epub"
+    },
+    {
+      "name": "Referer",
+      "value": "https://www.google.com/books/edition/_/AbCdEfGh123?gbpv=1",
+      "output": "https://www.google.com/books/edition/<hidden:1>/<hidden:11>?gbpv=<hidden:1>"
+    },
+    {
+      "name": "Content-Type",
+      "value": "application/vnd.adobe.adept+xml",
+      "output": "application/vnd.adobe.adept+xml"
+    },
+    {
+      "name": "Content-Length",
+      "value": "123456",
+      "output": "123456"
+    },
+    {
+      "name": "X-Request-Id",
+      "value": "33333333-3333-4333-8333-333333333333",
+      "output": "<uuid>"
+    },
+    {
+      "name": "Date",
+      "value": "Mon, 28 Sep 2026 10:00:00 GMT",
+      "output": "Mon, 28 Sep 2026 10:00:00 GMT"
+    },
+    {
+      "name": "X-Forwarded-For",
+      "value": "203.0.113.7, 2001:db8::1",
+      "output": "<ip>, <ip>"
+    },
+    {
+      "name": "Server",
+      "value": "Apache",
+      "output": "Apache"
+    },
+    {
+      "name": "Empty",
+      "value": "",
+      "output": ""
+    }
+  ],
+  "texts": [
+    {
+      "input": "",
+      "output": ""
+    },
+    {
+      "input": "Connection reset by peer",
+      "output": "Connection reset by peer"
+    },
+    {
+      "input": "<?xml version=\"1.0\"?>\n<adept:fulfill xmlns:adept=\"http://ns.adobe.com/adept\">\n<adept:user>urn:uuid:11111111-1111-4111-8111-111111111111</adept:user>\n<adept:device>urn:uuid:22222222-2222-4222-8222-222222222222</adept:device>\n<adept:deviceType>standalone</adept:deviceType>\n<adept:fingerprint>ZmFrZSBmaW5nZXJwcmludCB2YWx1ZQ==</adept:fingerprint>\n<adept:nonce>AAAAAAAAAAAAAAAA</adept:nonce>\n<adept:expiration>2026-09-28T10:10:00Z</adept:expiration>\n<adept:signature>c2lnbmF0dXJlIGJ5dGVzIGdvIGhlcmUgYW5kIGFyZSBsb25n</adept:signature>\n</adept:fulfill>",
+      "output": "<?xml version=\"1.0\"?>\n<adept:fulfill xmlns:adept=\"http://ns.adobe.com/adept\">\n<adept:user><hidden:45></adept:user>\n<adept:device><hidden:45></adept:device>\n<adept:deviceType>standalone</adept:deviceType>\n<adept:fingerprint><hidden:32></adept:fingerprint>\n<adept:nonce><hidden:16></adept:nonce>\n<adept:expiration>2026-09-28T10:10:00Z</adept:expiration>\n<adept:signature><hidden:48></adept:signature>\n</adept:fulfill>"
+    },
+    {
+      "input": "<metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n<dc:title>My Private Reading</dc:title><dc:creator>Jane Q. Author</dc:creator>\n<dc:publisher>Some House</dc:publisher><dc:identifier>urn:isbn:9780000000001</dc:identifier>\n<dc:description>A long description of the book.</dc:description>\n<dc:format>application/epub+zip</dc:format><dc:language>en</dc:language>\n</metadata>",
+      "output": "<metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n<dc:title><hidden:18></dc:title><dc:creator><hidden:14></dc:creator>\n<dc:publisher><hidden:10></dc:publisher><dc:identifier><hidden:22></dc:identifier>\n<dc:description><hidden:31></dc:description>\n<dc:format>application/epub+zip</dc:format><dc:language>en</dc:language>\n</metadata>"
+    },
+    {
+      "input": "<adept:user/><adept:signature></adept:signature><Title>Case Insensitive</Title>",
+      "output": "<adept:user/><adept:signature></adept:signature><Title><hidden:16></Title>"
+    },
+    {
+      "input": "<adept:username method=\"AdobeID\">reader@example.com</adept:username>",
+      "output": "<adept:username method=\"AdobeID\"><hidden:18></adept:username>"
+    },
+    {
+      "input": "<adept:encryptedKey keyInfo=\"x\">ZmFrZSBlbmNyeXB0ZWQga2V5IHZhbHVl</adept:encryptedKey>",
+      "output": "<adept:encryptedKey keyInfo=\"x\"><hidden:32></adept:encryptedKey>"
+    },
+    {
+      "input": "Error for reader@example.com from 203.0.113.7 and 2001:db8:85a3::8a2e:370:7334 and ::1",
+      "output": "Error for <email> from <ip> and <ip> and <ip>"
+    },
+    {
+      "input": "Link: https://acs.example.com/fulfillment/URLLink.acsm?orderid=12345&resid=abc in text",
+      "output": "Link: https://acs.example.com/fulfillment/<hidden:7>.acsm?orderid=<hidden:5>&resid=<hidden:3> in text"
+    },
+    {
+      "input": "Google account 123456789012345678 blocked; ref 12345678901 is too short",
+      "output": "Google account <hidden:18> blocked; ref 12345678901 is too short"
+    },
+    {
+      "input": "token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcdefghijklmnopqrstuvwxyz",
+      "output": "token=eyJhbGciOiJIUzI1NiJ9.<hidden:27>.<hidden:26>"
+    },
+    {
+      "input": "base64 blob QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo= and short QUJD",
+      "output": "base64 blob <hidden:36> and short QUJD"
+    },
+    {
+      "input": "UUID 33333333-3333-4333-8333-333333333333 and uppercase ABCDEF01-2345-6789-ABCD-EF0123456789",
+      "output": "UUID <uuid> and uppercase <uuid>"
+    },
+    {
+      "input": "Version 1.2.3 at 10.0.0.1:8080 and 999.999.999.999",
+      "output": "Version 1.2.3 at <ip>:8080 and <ip>"
+    },
+    {
+      "input": "<!DOCTYPE html><html><head><title>Sorry...</title></head><body>\n<p>Our systems have detected unusual traffic from your computer network (IP address: 198.51.100.23).</p>\n<form action=\"https://www.google.com/sorry/index?continue=https://books.google.com/download&q=EgQKAQIDGJ\">\n<input type=\"hidden\" name=\"q\" value=\"EgQKAQIDGJaBmK8GIjAqyZ5T4Hq9aBcDeFgHiJkLmNoPqRsT\"></form>\n</body></html>",
+      "output": "<!DOCTYPE html><html><head><title><hidden:8></title></head><body>\n<p>Our systems have detected unusual traffic from your computer network (IP address: <ip>).</p>\n<form action=\"https://www.google.com/sorry/index?continue=<hidden:33>&q=<hidden:10>\">\n<input type=\"hidden\" name=\"q\" value=\"<hidden:48>\"></form>\n</body></html>"
+    },
+    {
+      "input": "Multi\nline\ttext with reader.name+tag@sub.example.co.uk inside",
+      "output": "Multi\nline\ttext with <email> inside"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+"Red de telefon¡a m¢vil","Generic Mobile Broadband Adapter","02-00-5E-10-00-01","Media disconnected"
+"Wi-Fi","Intel(R) Wi-Fi 6 AX201 160MHz","02-00-5E-10-00-02","\Device\Tcpip_{00000000-0000-4000-8000-000000000001}"
+"Conexi¢n de red Bluetooth","Bluetooth Device (Personal Area Network)","02-00-5E-10-00-03","Media disconnected"

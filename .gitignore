@@ -18,3 +18,11 @@ activation.dat
 device.xml
 devicesalt
 *.der
+
+# Per-version environments of the local check (tests/tools/check.py)
+.venv-py*/
+
+# Coverage data
+.coverage
+.coverage.*
+htmlcov/

@@ -3,10 +3,8 @@ EPUB to PDF converter.
 """
 
 import tempfile
-import shutil
 from pathlib import Path
 from ebooklib import epub
-from io import BytesIO
 
 
 class EpubToPdfConverter:
@@ -49,17 +47,14 @@ class EpubToPdfConverter:
             html_file.write_text(html_content, encoding="utf-8")
 
             # Convert to PDF
-            HTML(filename=str(html_file), base_url=str(temp_path)).write_pdf(
-                str(pdf_path)
-            )
+            HTML(filename=str(html_file), base_url=str(temp_path)).write_pdf(str(pdf_path))
 
     def _extract_content(self, book) -> str:
         """Extract HTML content from EPUB."""
         content_parts = []
 
         # Add basic CSS
-        content_parts.append(
-            """
+        content_parts.append("""
         <!DOCTYPE html>
         <html>
         <head>
@@ -83,8 +78,7 @@ class EpubToPdfConverter:
             </style>
         </head>
         <body>
-        """
-        )
+        """)
 
         # Get book title
         title = book.get_metadata("DC", "title")

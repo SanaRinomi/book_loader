@@ -29,7 +29,18 @@ uv run ruff check src/ --fix
 
 # Run the CLI directly (for testing)
 uv run python -m book_loader.cli <command>
+
+# Tests (network and live tests are skipped by default)
+uv run pytest
+
+# The local check: the gate for every refactor task (ruff, black --check,
+# pyright once configured, pytest with coverage; Python 3.11 then 3.14)
+uv run python tests/tools/check.py
 ```
+
+Only Windows is available until the refactor is done, and there is no remote CI
+(REFACTOR_PLAN.md §2.1). Checks needing macOS, Linux or CI are deferred (D1-D12 in
+REFACTOR_ACTION_PLAN.md).
 
 ## Architecture Overview
 

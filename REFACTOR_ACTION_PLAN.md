@@ -3,6 +3,8 @@
 > Companion to [REFACTOR_PLAN.md](REFACTOR_PLAN.md), which holds the design. This file turns that design into ordered tasks and sub-tasks, and lists the tests each one needs. References like "§7" point to sections of REFACTOR_PLAN.md; task IDs like **T3.2** point within this file.
 >
 > Written 2026-09-28 against commit `3f70d22`. Tick the boxes as work lands.
+>
+> Revised 2026-09-29 for the working constraints in REFACTOR_PLAN §2.1: only Windows is available, and there is no remote CI. Steps that need macOS, Linux or CI are marked **Deferred** with an item ID (D1, D2, …). Those items are listed in [Deferred until after the refactor](#deferred-until-after-the-refactor) at the end, as things that may need debugging or fixing once the refactor is done.
 
 ## How to use this plan
 
@@ -12,14 +14,15 @@
 - **Phase 0 tests pin current behaviour.** Where a test targets old internals, the later task that replaces the module ports the test, reusing the same fixtures and expected values. The expected values never change without a decision in REFACTOR_PLAN.md.
 
 ### Branches and PRs
-- One branch and PR per phase: `refactor/p0-safety-net`, `refactor/p1-vendor`, … Large phases can split into one PR per task group, but every PR must leave CI green.
+- One branch and PR per phase: `refactor/p0-safety-net`, `refactor/p1-vendor`, … Large phases can split into one PR per task group, but every PR must pass the local check (T0.5.4).
 - Commit messages say which tasks they complete (`T4.2.3`).
 
 ### Definition of done (applies to every task)
 - [ ] The code is written in the target location (REFACTOR_PLAN §4) and follows the layering rule: nothing below `cli/` imports `click`, `rich`, `questionary` or `prompt_toolkit`.
 - [ ] The tests listed for the task are written and pass locally: `uv run pytest`.
 - [ ] `uv run ruff check src tests`, `uv run black --check src tests`, and (from Phase 2) `uv run pyright` pass.
-- [ ] CI is green on Windows, macOS and Linux.
+- [ ] The local check (T0.5.4) passes on Windows with Python 3.11 and 3.14. CI on macOS and Linux is deferred (D1).
+- [ ] Code that behaves differently per OS takes the platform, environment and command output as inputs, so its macOS and Linux behaviour is tested with fakes on Windows. Anything that still can't be tested on Windows is added to the deferred list.
 - [ ] The help parity test (T0.3) still passes.
 - [ ] User-visible changes have a `CHANGELOG.md` entry under "Unreleased".
 - [ ] No vendored file changed except in tasks that say so, and then the vendor manifest (T1.4) is updated in the same commit.
@@ -30,6 +33,7 @@ tests/
 ├── conftest.py            shared fixtures: tmp HOME, isolated auth dir, fake Downloads, frozen clock
 ├── fixtures/
 │   ├── builders/          code that builds test data at runtime
+│   │   ├── adobe_auth.py  synthetic authorization folder: activation.xml, device.xml, devicesalt (T0.4)
 │   │   ├── adept_epub.py  synthetic ADEPT-encrypted EPUB + matching RSA key (T0.4.6)
 │   │   ├── tiny_pdf.py    minimal PDF with an EBX_HANDLER encrypt dictionary (T0.4.7)
 │   │   ├── kobo.py        synthetic Kobo.sqlite + encrypted KEPUB (T0.4.3)
@@ -38,6 +42,7 @@ tests/
 │   ├── v0/                data written by 0.1.0: pending JSON, backup .tar.gz, link pages
 │   ├── os_output/         captured ifconfig / getmac / Get-NetAdapter / /sys output
 │   └── golden/            expected values: safe_filename table, key vectors, help option sets
+├── tools/                 check.py (T0.5.4): the local check; dump_help.py (T0.3), make_fixtures.py (T0.4): regenerate golden, v0 and OS output files
 ├── fakes/                 FakeFulfiller, FakeDecryptor, FakeConverter, FakePrompter, RecordingReporter, fake libadobe
 ├── unit/                  one folder per package (domain, infra, adobe, drm, kobo, epub, conversion, library)
 ├── integration/           services with fakes at the network edge
@@ -54,56 +59,61 @@ tests/
 
 The default run is `-m "not network and not live"`. `weasyprint` tests skip themselves when the libraries are missing.
 
+During the refactor only Windows is available, so `macos_only` and `posix_only` tests are written but always skip. Their first real run is deferred (D2).
+
 ### Size key
 **S** = under half a day, **M** = one to two days, **L** = three days or more. These are relative, meant for ordering work, not deadlines.
 
 ---
 
 ## Phase 0: Safety net
-Goal: pin today's behaviour in tests and set up tooling and CI before any code moves. Only packaging and tooling change here; no production behaviour does.
+Goal: pin today's behaviour in tests and set up tooling and a local check before any code moves. Only packaging and tooling change here; no production behaviour does.
 
 ### T0.1 Tooling and packaging (S)
-- [ ] **T0.1.1** In `pyproject.toml`:
+- [x] **T0.1.1** In `pyproject.toml`:
   - set `requires-python = ">=3.11"`
   - update the classifiers: drop 3.10, add 3.14
   - set black and ruff `target-version` to py311
   - fix the description and keywords to mention Kobo
-- [ ] **T0.1.2** Move the dev tools to `[dependency-groups] dev`: pytest, pytest-cov, black, ruff, and pyright (pyright is used from Phase 2). Remove `[project.optional-dependencies] dev`.
-- [ ] **T0.1.3** Add `[tool.pytest.ini_options]` with the markers above, `addopts = -m "not network and not live"`, and `testpaths = ["tests"]`.
-- [ ] **T0.1.4** Run `uv lock` and commit `uv.lock`.
-- [ ] **T0.1.5** Create `CHANGELOG.md` with an "Unreleased" section.
+- [x] **T0.1.2** Move the dev tools to `[dependency-groups] dev`: pytest, pytest-cov, black, ruff, and pyright (pyright is used from Phase 2). Remove `[project.optional-dependencies] dev`.
+- [x] **T0.1.3** Add `[tool.pytest.ini_options]` with the markers above, `addopts = -m "not network and not live"`, and `testpaths = ["tests"]`.
+- [x] **T0.1.4** Run `uv lock` and commit `uv.lock`.
+- [x] **T0.1.5** Create `CHANGELOG.md` with an "Unreleased" section.
+- [x] **T0.1.6** Added 2026-09-29. Exclude the vendored files from ruff and black in `pyproject.toml` (`force-exclude`, so they stay excluded when a file is passed directly), then run one formatting pass on project code only: `ruff check --fix` (safe fixes) and `black`. Vendored files are never formatted or linted.
 - **Tests:**
+  - `uv run ruff check src tests` and `uv run black --check src tests` pass, and no vendored file changed.
+  - `--help` output of every command is identical before and after the formatting pass.
   - `uv sync` works on a clean checkout.
   - `uv run book-loader --help` and `uv run python -m book_loader.cli --help` work.
   - On Python 3.10, `pip install .` is refused (checked by hand once).
 
 ### T0.2 Test scaffolding (S)
-- [ ] **T0.2.1** Create the `tests/` tree above.
-- [ ] **T0.2.2** Write the `conftest.py` fixtures:
+- [x] **T0.2.1** Create the `tests/` tree above.
+- [x] **T0.2.2** Write the `conftest.py` fixtures:
   - `tmp_home`: points `HOME`, `USERPROFILE` and `LOCALAPPDATA` at a temp folder.
   - `auth_dir`: an empty auth folder, with `BOOK_LOADER_AUTH_DIR` set to it.
   - `downloads_dir`
   - `frozen_time`
   - `cli_runner`: a Click `CliRunner` with stderr kept separate from stdout.
-- **Tests:** a smoke test that every fixture works on all three OSes in CI.
+- **Tests:** a smoke test that every fixture works on all three OSes. Runs on Windows now; macOS and Linux are deferred (D2).
 
 ### T0.3 Help parity snapshot (S)
-- [ ] **T0.3.1** Write `tests/tools/dump_help.py`. It walks the Click command tree and saves, for every command and group, the set of option names (for example `-o/--output`, `--to-pdf`, `-v/--verbose`) and arguments, into `tests/fixtures/golden/help_options.json`.
-- [ ] **T0.3.2** Write `tests/cli/test_help_parity.py`. For every command in the golden file, the command still exists and still has every option. New commands and options are allowed. The test compares sets of options, not help text, so rich-click's formatting in Phase 6 doesn't break it.
-- [ ] **T0.3.3** Include `process --optimize/--no-optimize`, `process -v`, `process --auth-dir` and `auth reset --yes`.
+- [x] **T0.3.1** Write `tests/tools/dump_help.py`. It walks the Click command tree and saves, for every command and group, the set of option names (for example `-o/--output`, `--to-pdf`, `-v/--verbose`) and arguments, into `tests/fixtures/golden/help_options.json`.
+- [x] **T0.3.2** Write `tests/cli/test_help_parity.py`. For every command in the golden file, the command still exists and still has every option. New commands and options are allowed. The test compares sets of options, not help text, so rich-click's formatting in Phase 6 doesn't break it.
+- [x] **T0.3.3** Include `process --optimize/--no-optimize`, `process -v`, `process --auth-dir` and `auth reset --yes`.
 - **Tests:** the parity test passes against today's CLI. Remove one option by hand to check that the test catches it, then revert.
 
 ### T0.4 Characterization tests of the current code (L)
 These tests pin what 0.1.0 does today. They live in `tests/characterization/`, except for builders and golden files, which later phases reuse.
 
-- [ ] **T0.4.1 Redaction** (`utils/redact.py`):
+- [x] **T0.4.1 Redaction** (`utils/redact.py`):
   - a table of URLs, header pairs and text blocks (XML with UUIDs, emails, IPs, tokens), each with the expected output
   - saved as `golden/redact.json`
-- [ ] **T0.4.2 `safe_filename`** (`core/kobo/decryptor.py`):
+- [x] **T0.4.2 `safe_filename`** (`core/kobo/decryptor.py`):
   - at least 40 titles: ASCII, punctuation, CJK, accented letters, emoji, slashes, colons, very long titles, empty
   - their outputs saved as `golden/safe_filename.json`
   - this file is the contract for plain-mode Kobo names (REFACTOR_PLAN §5.11)
-- [ ] **T0.4.3 Kobo builder and tests:**
+- [x] **T0.4.3 Kobo builder and tests:**
   - **Builder** `builders/kobo.py`:
     - creates `Kobo.sqlite` with the tables and columns the current queries use: `content(ContentID, Title, Attribution)`, `content_keys(volumeid, elementid, elementkey)`, `user(UserID)`
     - creates a `kepub/<volumeid>` ZIP whose entries are AES-ECB encrypted with page keys, each page key wrapped with a user key derived from a chosen fake MAC, user ID and hash key
@@ -115,29 +125,31 @@ These tests pin what 0.1.0 does today. They live in `tests/characterization/`, e
     - DRM-free books are copied as they are
     - a wrong-key-only setup raises `KoboDecryptionError`
     - a missing folder raises `KoboLibraryNotFoundError`
+    - added 2026-09-29, as `xfail(strict=True)` for known bugs that T4.2 must fix: a change still in the WAL file is listed, and an XHTML file starting with a UTF-8 BOM is decrypted with the right key
   - **Key vectors:** save the derived key for the fixed inputs as `golden/kobo_keys.json`.
-- [ ] **T0.4.4 Backup helpers** (`cli.backup_auth`, `list_backups`, `restore_auth`):
+  - **OS output fixtures:** save real `getmac` and `Get-NetAdapter` output from this Windows machine in `fixtures/os_output/`. The macOS `ifconfig -a` and Linux `/sys/class/net` fixtures are written by hand from documented examples, and replaced with real captures later (deferred D6).
+- [x] **T0.4.4 Backup helpers** (`cli.backup_auth`, `list_backups`, `restore_auth`):
   - a round trip into a folder with the same name
   - backups listed newest first
   - the known bug as an `xfail(strict=True)` test: restoring into a folder with a different name puts the files in the wrong place. T3.8 must make it pass.
   - save one archive to `fixtures/v0/auth_anonymous_20260101_000000.tar.gz`, and one named in `reset`'s style (`auth_backup_*`)
-- [ ] **T0.4.5 Pending store** (`ACSMFulfiller._save_pending`, `_load_pending`, `_clear_pending`) with a stub account whose `get_device_key()` returns fixed bytes:
-  - JSON fields and file mode (`0600` on POSIX)
+- [x] **T0.4.5 Pending store** (`ACSMFulfiller._save_pending`, `_load_pending`, `_clear_pending`) with a stub account whose `get_device_key()` returns fixed bytes:
+  - JSON fields and file mode (`0600` on POSIX; `posix_only`, deferred D4)
   - the link page is written into the folder passed in
   - a mismatched fingerprint is ignored
   - clearing deletes both files
   - save a v0 record and link page to `fixtures/v0/`
-- [ ] **T0.4.6 Synthetic ADEPT EPUB builder** (`builders/adept_epub.py`):
+- [x] **T0.4.6 Synthetic ADEPT EPUB builder** (`builders/adept_epub.py`):
   - makes an RSA key pair (pycryptodome), whose private key in DER form is the "device key"
   - makes a random 16-byte AES book key
   - adds `META-INF/rights.xml` containing `<adept:encryptedKey>` (the book key encrypted with RSA PKCS#1 v1.5, base64) and no `keyType`, so no hardening applies
   - adds `META-INF/encryption.xml` listing the encrypted entries
   - compresses each listed entry with raw deflate, then encrypts it with AES-CBC and a random IV at the front
   - **Test:** the vendored `ineptepub.decryptBook(device_key, in, out)` returns `0` and the output's entries equal the plaintext; a plain EPUB returns `1`.
-- [ ] **T0.4.7 Tiny PDF builder and `libpdf` test:**
+- [x] **T0.4.7 Tiny PDF builder and `libpdf` test:**
   - a hand-written PDF with an `/Encrypt` dictionary whose `/Filter` is `/EBX_HANDLER`
   - **Test:** `libpdf.patch_drm_into_pdf` returns success and appends an incremental update containing `ADEPT_LICENSE` and `EBX_BOOKID`.
-- [ ] **T0.4.8 Workflow characterization** (`BookLoader.process_acsm` with `ACSMFulfiller` and `DRMRemover` monkeypatched):
+- [x] **T0.4.8 Workflow characterization** (`BookLoader.process_acsm` with `ACSMFulfiller` and `DRMRemover` monkeypatched):
   - 3 steps, or 4 with `--to-pdf`
   - encrypted file and `.temp/` removed on success
   - `--keep-encrypted` keeps them
@@ -146,7 +158,7 @@ These tests pin what 0.1.0 does today. They live in `tests/characterization/`, e
   - the **data-loss bug** as `xfail(strict=True)`: an existing `Title.epub` in the output folder is overwritten and then deleted by `--to-pdf`. T5.1 must make it pass.
   - the manual-download loop: wrong file, then right file
   - with `manual_download=None`, `ManualDownloadRequired` is raised
-- [ ] **T0.4.9 CLI characterization** (`CliRunner`):
+- [x] **T0.4.9 CLI characterization** (`CliRunner`):
   - `info` exits 0 and shows "Not authorized" on an empty auth folder
   - `auth info` does the same
   - `auth create` when already authorized prints the warning and exits 0
@@ -154,19 +166,22 @@ These tests pin what 0.1.0 does today. They live in `tests/characterization/`, e
   - `kobo dedrm --overwrite --skip-existing` exits 1 with the message
   - `convert` on a missing file exits 2 (Click's check)
   - `process` without a terminal prints the "finish later" command and exits 1 when downloading is blocked (fulfiller monkeypatched)
-- [ ] **T0.4.10 Fulfillment reply fixtures** in `fixtures/replies/`:
+- [x] **T0.4.10 Fulfillment reply fixtures** in `fixtures/replies/`:
   - synthetic XML shaped like the structures `libadobeFulfill.parse_fulfillment` and `updateLoanReturnData` read, for an EPUB, a PDF, and a returnable loan with a `permissions/display/until` date
   - **Test:** `parse_fulfillment` gives the expected `book_name`, format and URL for each, which checks the fixtures themselves.
 
-### T0.5 Continuous integration (S)
-- [ ] **T0.5.1** `.github/workflows/ci.yml`:
+### T0.5 Local check and continuous integration (S)
+No remote CI is available during the refactor (REFACTOR_PLAN §2.1). The local check in T0.5.4 is the gate for every task; the workflows are written now so they can be switched on later.
+- [x] **T0.5.1** `.github/workflows/ci.yml`, written but not run until after the refactor (deferred D1):
   - runs on Windows, macOS and Linux, each with Python 3.11 and 3.14
   - steps: `uv sync`, ruff, `black --check`, then `pytest` with coverage
-- [ ] **T0.5.2** A separate manual workflow runs `-m network` with secrets, for later use.
-- [ ] **T0.5.3** Check whether `import book_loader.core.adobe.libadobe` works on the Linux runners, because of the `oscrypto`/OpenSSL 3 risk (REFACTOR_PLAN §16), and record the result in the PR.
-- **Tests:** the pipeline passes on all six combinations.
+- [x] **T0.5.2** A separate manual workflow runs `-m network` with secrets, for later use. Written but not run (deferred D1).
+- [x] **T0.5.3** Check whether `import book_loader.core.adobe.libadobe` works on Linux, because of the `oscrypto`/OpenSSL 3 risk (REFACTOR_PLAN §16). **Deferred (D3):** no Linux system is available, so record the result as "not checked".
+  - Result, 2026-09-29: **not checked** (no Linux system). The T1.3 decision to replace `oscrypto` with a shim makes this check moot for the new code; D3 checks the shim on Linux instead.
+- [x] **T0.5.4** A local check script, `uv run python tests/tools/check.py`. It runs `uv sync --locked`, ruff, `black --check`, pyright (from Phase 2) and `pytest` with coverage, first under Python 3.11 and then under 3.14, and stops at the first failure. The CI workflow in T0.5.1 runs the same script, so both stay in step.
+- **Tests:** the local check passes on Windows under both Python versions. A deliberate ruff error makes it fail, and is then reverted.
 
-**Phase 0 exit:** CI green on six combinations. The golden files (`redact`, `safe_filename`, `kobo_keys`, `help_options`) and the v0 fixtures are committed. The two strict-xfail tests (restore location, `--to-pdf` data loss) are present.
+**Phase 0 exit:** the local check passes on Windows under Python 3.11 and 3.14, and the CI workflows are written but not run. The golden files (`redact`, `safe_filename`, `kobo_keys`, `help_options`) and the v0 fixtures are committed. The four strict-xfail tests (restore location, `--to-pdf` data loss, Kobo WAL, Kobo BOM) are present. All tests block network access except to this machine unless marked `network` or `live`.
 
 ---
 
@@ -178,6 +193,7 @@ Goal: vendored files move to their final home with only import changes, and are 
 - [ ] **T1.1.2** Move the files with `git mv`:
   - `core/adobe/{libadobe,libadobeAccount,libadobeFulfill,libpdf,customRSA}.py` → `adobe/_vendor/`
   - `core/drm/{ineptepub,ineptpdf,adobekey,utilities,argv_utils,zeroedzipinfo}.py` → `drm/_vendor/`
+  - in `pyproject.toml`, remove the old-path entries from the ruff and black exclusions (T0.1.6); the `_vendor` patterns already cover the new location
 - [ ] **T1.1.3** Check the vendored imports:
   - relative imports among the vendored files still work because the files move together
   - `from ...utils.redact import …` still reaches `book_loader.utils` from the new depth (`adobe/_vendor` is also two levels below `book_loader`)
@@ -196,15 +212,34 @@ Goal: vendored files move to their final home with only import changes, and are 
 - **Tests:** none (documentation). The reviewer checks one file's diff against upstream using the notes.
 
 ### T1.3 oscrypto decision (S)
-- [ ] **T1.3.1** Using the T0.5.3 result, pick one of the options in REFACTOR_PLAN §16 and record it in `PATCHES.md` and the README draft notes.
-- **Tests:** if a workaround is chosen, add a CI step on Linux that imports `libadobe` and signs a test node with a generated key.
+Decided 2026-09-29: replace `oscrypto` with a shim (REFACTOR_PLAN decision 21, §16). T1.5 builds it.
+- [ ] **T1.3.1** Record the decision and the reason (the OpenSSL 3 bug on Linux, which can't be checked during the refactor) in `adobe/_vendor/PATCHES.md` and the README draft notes.
+- **Tests:** none (documentation).
 
 ### T1.4 Vendor guard (S)
 - [ ] **T1.4.1** Write `tests/unit/test_vendor_manifest.py`. It hashes every file in both `_vendor/` folders and compares against `_vendor/MANIFEST.sha256`.
 - [ ] **T1.4.2** Add a script, `uv run python tests/tools/update_vendor_manifest.py`, to regenerate the manifest on purpose.
 - **Tests:** the guard passes. Changing one byte in a vendored file makes it fail.
 
-**Phase 1 exit:** vendored code is in `_vendor/` and documented; the guard is active; the CLI behaves the same.
+### T1.5 PKCS#12 shim for oscrypto (M)
+- [ ] **T1.5.1** Write `adobe/pkcs12.py`, project code rather than vendored. It offers the three names `libadobe` uses, with the same arguments and return types as `oscrypto`:
+  - `keys.parse_pkcs12(data, password)` returns `(private_key, certificate, extra_certificates)`
+  - `dump_certificate(cert, encoding="der")` returns the certificate's DER bytes
+  - `dump_private_key(key, None, "der")` returns an unencrypted PKCS#8 DER key, as `oscrypto` does
+  - it parses with `asn1crypto`, derives keys and MAC keys with the RFC 7292 Appendix B algorithm on `hashlib`, and decrypts with `pycryptodome`: the PKCS#12 PBE schemes (SHA-1 with 3DES, and with RC2-40 and RC2-128) and PBES2 (PBKDF2 with AES-CBC)
+  - it checks the MAC, and raises a clear error for a wrong password or an unsupported algorithm, naming the algorithm
+- [ ] **T1.5.2** In `adobe/_vendor/libadobe.py`, change only the two `oscrypto` import lines to import the same names from `..pkcs12`. This is the one vendored edit in this task: update `MANIFEST.sha256` and `PATCHES.md` in the same commit.
+- [ ] **T1.5.3** In `pyproject.toml`, move `oscrypto` from the dependencies to the dev group, where only the comparison tests use it. `asn1crypto` stays a core dependency. Add `cryptography` to the dev group for the test builder. Run `uv lock`, and add a changelog entry: `oscrypto` is no longer needed.
+- **Tests:**
+  - a builder, `fixtures/builders/pkcs12.py`, makes an RSA key, a certificate and PKCS#12 files with `cryptography`: 3DES for both bags, and PBES2 with AES-256. An RC2-40 certificate bag, the old OpenSSL default that Adobe servers may use, is generated once with `openssl pkcs12 -export -legacy` and committed under `fixtures/`
+  - for each file, the shim's three results are byte-identical to `oscrypto`'s. These tests skip when `oscrypto` can't be imported
+  - a wrong password, a changed MAC, and an unsupported algorithm each raise the expected error
+  - `sign_node` on a synthetic activation and device key gives the same signature through the shim as through `oscrypto`, and the signature verifies with the certificate's public key
+  - `libadobe` imports and signs with `oscrypto` blocked (`sys.modules["oscrypto"] = None`)
+  - `live`, local only: the real `activation.xml` on this machine gives identical results through the shim and `oscrypto`. Nothing from it is written to disk or committed
+  - the Linux run is deferred (D3)
+
+**Phase 1 exit:** vendored code is in `_vendor/` and documented; the guard is active; `libadobe` no longer needs `oscrypto`; the CLI behaves the same.
 
 ---
 
@@ -246,7 +281,7 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
 - [ ] **T2.4.1** Global folder per OS: `%LOCALAPPDATA%\book-loader\` on Windows (Known Folder API when the variable is unset), `~/.config/book-loader/` elsewhere. The auth folder is `adobe\` on Windows and `.adobe/` elsewhere. Add `logs/`, `backups/`, `config.toml` and `state.json` paths.
 - [ ] **T2.4.2** Old Windows location `~\.config\book-loader\.adobe\`: returned as the auth folder only when the new one doesn't exist and the old one does, with a flag so the CLI can show the notice.
 - **Tests:**
-  - fake environments for Windows, macOS and Linux, including `LOCALAPPDATA` unset
+  - fake environments for Windows, macOS and Linux, including `LOCALAPPDATA` unset. The OS and environment are passed in, not read from the host, so all three run on Windows. Real macOS and Linux checks are deferred (D5).
   - the old-location fallback when only the old folder exists, when both exist, and when neither does
   - resolving paths never creates folders
 
@@ -280,7 +315,7 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
 - [ ] **T2.7.1** `atomic_write(path)`: write to a temp file in the same folder, then `os.replace`.
 - [ ] **T2.7.2** `unique_path(path)`: adds ` (2)`, ` (3)` and so on.
 - [ ] **T2.7.3** `private_dir(path)`:
-  - creates the folder with mode `0700` on POSIX
+  - creates the folder with mode `0700` on POSIX (`posix_only` test, deferred D4)
   - on Windows, checks that no broader permissions were added (read-only check)
   - only called by code that writes
 - [ ] **T2.7.4** `retry_locked(fn)`: on Windows, retries `PermissionError` and sharing violations with backoff for about 2 seconds, then raises `LockedError` naming the file.
@@ -306,7 +341,7 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - two locks: the second waits and then fails
   - a stale lock from a dead process ID is taken over
   - the lock is released on an exception
-  - a real subprocess holds a lock (both OSes)
+  - a real subprocess holds a lock (both OSes; the POSIX run and stale-lock detection on POSIX are deferred, D8)
 
 ### T2.9 `infra/secrets.py` (S)
 - [ ] **T2.9.1** `resolve_secret(kind, file_opt, stdin_flag, env_var, legacy_value, prompter, interactive)`:
@@ -373,11 +408,11 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - Linux: the `XDG_DOWNLOAD_DIR` entry in `~/.config/user-dirs.dirs`
   - macOS and fallback: `~/Downloads`
   - an override from settings
-- **Tests:** a parser test for `user-dirs.dirs`; `windows_only`, the Known Folder result is an existing folder; the override wins.
+- **Tests:** a parser test for `user-dirs.dirs`; `windows_only`, the Known Folder result is an existing folder; the override wins. A real Linux desktop and macOS are deferred (D5).
 
 ### T2.14 Type checking (S)
-- [ ] **T2.14.1** Add a pyright config that checks `domain`, `infra` and each new package as it appears. The old `core`, `utils` and `cli.py` are excluded until they're deleted, and `_vendor` is always excluded. Add it to CI.
-- **Tests:** CI runs pyright. The build fails on a deliberate type error, which is then reverted.
+- [ ] **T2.14.1** Add a pyright config that checks `domain`, `infra` and each new package as it appears. The old `core`, `utils` and `cli.py` are excluded until they're deleted, and `_vendor` is always excluded. Add it to the local check (T0.5.4), which the CI workflow also runs.
+- **Tests:** the local check runs pyright. It fails on a deliberate type error, which is then reverted.
 
 **Phase 2 exit:** every infra and domain module is fully tested, with at least 90% line coverage for these packages. The old CLI is unchanged, apart from where it imports redact.
 
@@ -523,7 +558,7 @@ It comes first because T3.7 and Phase 11 use it.
   - DRM-free books are copied
   - names come from `infra/names`
 - **Tests:**
-  - MAC parsers against the fixtures in `fixtures/os_output/`, including disconnected adapters and localized `getmac` output
+  - MAC parsers against the fixtures in `fixtures/os_output/`, including disconnected adapters and localized `getmac` output. The `ifconfig` and `/sys` fixtures are hand-written until real captures exist (deferred D6).
   - key vectors match `golden/kobo_keys.json`
   - `library` tests on the T0.4.3 builder, including the WAL variant: a change still in the WAL is visible, and the fallback path is exercised
   - the temp database is gone after an exception
@@ -533,6 +568,7 @@ It comes first because T3.7 and Phase 11 use it.
   - key reuse order
   - plain-mode names match the golden values; two books with the same title get stable distinct names
   - `live` + `windows_only`: a real Kobo Desktop install is listed
+  - Kobo on macOS, the only platform it supports today, is checked against a real install after the refactor (deferred D7)
 
 ### T4.3 `conversion/` (M)
 - [ ] **T4.3.1** `base.py`: the `Converter` protocol, a registry, and `get_converter(name)` raising `ConfigError` for an unknown name.
@@ -549,6 +585,7 @@ It comes first because T3.7 and Phase 11 use it.
   - an import failure simulated by monkeypatching `import`
   - `weasyprint` marker: a real PDF is produced from a small EPUB
   - Calibre discovery with fake folders on each OS layout, and a subprocess fake for success and failure
+  - WeasyPrint and Calibre on real macOS and Linux installs are deferred (D10)
 
 **Phase 4 exit:** every adapter layer is complete and tested. The old code is still in use.
 
@@ -685,19 +722,19 @@ Port one command group per commit; each commit includes its CLI tests.
 - **Tests:** the T0.3 parity test passes against the new CLI; help renders without errors for every command.
 
 ### T6.5 Manual checks on real systems (M)
-Run and record in the PR, on Windows (including Git Bash) and on macOS or Linux:
+Run and record in the PR, on Windows (including Git Bash). The same checks on macOS or Linux are deferred (D12):
 - [ ] `info`, `auth info` on a fresh machine: no folders created
 - [ ] `auth create --anonymous` (network), `auth info`, `auth backup` (passphrase prompt shows `*`), `auth restore`, `auth reset`
 - [ ] `process` with a real EPUB ACSM and a real PDF ACSM
 - [ ] a blocked Google Play download, finished with `--downloaded-file`
 - [ ] `convert` with both engines where installed
-- [ ] Kobo `list` and `dedrm` on macOS; on Windows only after Phase 4's Windows support is confirmed
+- [ ] Kobo `list` and `dedrm` on Windows, after Phase 4's Windows support is confirmed. On macOS, deferred (D7)
 - [ ] the same commands in Git Bash: plain prompts, no crash
 
 ### T6.6 Switch over and delete the old code (M)
 - [ ] **T6.6.1** Delete `core/`, `utils/`, the old `cli.py`, `main.py`, the re-export shims and `tests/characterization/`. Everything they pinned must be ported by now: check against the list in T0.4.
 - [ ] **T6.6.2** Check that the `pyproject` entry point `book_loader.cli:cli` resolves to the package.
-- [ ] **T6.6.3** Drop `rsa`, `Pillow` and `asn1crypto`; add `rich`, `rich-click` and `prompt_toolkit`. Run `uv lock`.
+- [ ] **T6.6.3** Drop `rsa` and `Pillow`; add `rich`, `rich-click` and `prompt_toolkit`. Run `uv lock`. `asn1crypto` stays for the PKCS#12 shim, and `oscrypto` already left the core dependencies in T1.5.
 - [ ] **T6.6.4** Remove the pyright exclusions for the deleted folders.
 - **Tests:** the whole suite and the parity test pass; `pip install .` in a clean virtual environment gives a working `book-loader`, and `python -m book_loader` works too.
 
@@ -711,9 +748,10 @@ Run and record in the PR, on Windows (including Git Bash) and on macOS or Linux:
   - `--json` and logs
   - masked passwords
   - the fixes from REFACTOR_PLAN §6
+  - a note that this release was tested on Windows only, and that macOS and Linux users may hit problems (REFACTOR_PLAN §2.1)
 - [ ] **T6.7.2** README and README.zh-TW sections for the changed behaviour (the full rewrite comes in Phase 12).
 - [ ] **T6.7.3** Bump the version and tag `v0.2.0`.
-- **Tests:** CI green on the tag, and T6.5 complete.
+- **Tests:** the local check passes on the tag, and the Windows part of T6.5 is complete.
 
 ---
 
@@ -799,7 +837,7 @@ Finished after Phase 8: changelog entries for pending, watch, batch and loans.
 - **Tests:** the pipeline runs with and without the step, in the right order; the standalone command never changes its input; `--no-optimize` wins over config (tested again in Phase 9).
 
 ### T8.3 Release 0.3.0 (S)
-- [ ] Changelog and README sections, manual checks of watched downloads and batch on Windows, and tag `v0.3.0`.
+- [ ] Changelog and README sections, manual checks of watched downloads and batch on Windows, and tag `v0.3.0`. The changelog repeats the Windows-only testing note while deferred items remain.
 
 ---
 
@@ -893,12 +931,12 @@ Finished after Phase 8: changelog entries for pending, watch, batch and loans.
   - restoring some parts or some books
   - merging with conflicts and skips
   - a mismatched key is flagged
-  - a macOS-made archive with NFD and `:` in names restores on Windows (simulated, plus `windows_only` real)
+  - a macOS-made archive with NFD and `:` in names restores on Windows (simulated, plus `windows_only` real; an archive really made on macOS is deferred, D11)
   - a case collision
   - a tampered archive is rejected before anything is written
 
 ### T10.3 Manual cross-device check (S)
-- [ ] Back up a library on one machine (`full` and `restorable`), restore on a second machine with a different OS, `process` a new ACSM there with the restored authorization, and `loan return` there. Record the result.
+- [ ] Back up a library on one machine (`full` and `restorable`), restore on a second machine, `process` a new ACSM there with the restored authorization, and `loan return` there. Record the result. During the refactor both machines run Windows; the check with a different OS is deferred (D11).
 
 ---
 
@@ -946,7 +984,7 @@ Finished after Phase 8: changelog entries for pending, watch, batch and loans.
 - **Tests:** a docs check that every command and option mentioned in the README exists (parsed from the README code blocks and compared with the Click tree).
 
 ### T12.2 Release 0.4.0 (S)
-- [ ] Final changelog, manual checks from T6.5, T9 and T10.3 on Windows and one other OS, and tag `v0.4.0`.
+- [ ] Final changelog, manual checks from T6.5, T9 and T10.3 on Windows, and tag `v0.4.0`. The checks on another OS are deferred (D12); until they're done, the changelog keeps the Windows-only testing note.
 
 ---
 
@@ -971,5 +1009,26 @@ P0 ─► P1 ─► P2 ─┬─► P3 (T3.1 before T3.7) ─┐
 | Help option parity | T0.3 | every phase |
 | `safe_filename` golden values | T0.4.2 | every phase (via `names.kobo_plain_name` from T2.6) |
 | Kobo key vectors | T0.4.3 | every phase |
+| Kobo change still in the WAL is listed (strict xfail) | T0.4.3 | T4.2 |
+| Kobo XHTML with a UTF-8 BOM is decrypted (strict xfail) | T0.4.3 | T4.2 |
 | Redaction golden values | T0.4.1 | every phase |
 | Vendor manifest | T1.4 | every phase |
+| PKCS#12 shim matches `oscrypto` | T1.5 | every phase, while `oscrypto` is in the dev group |
+
+---
+
+## Deferred until after the refactor
+Everything here needs macOS, Linux or a remote CI pipeline, and none is available during the refactor (REFACTOR_PLAN §2.1, §18). Run these checks once the platforms are available. **Any of them may turn up bugs that need debugging or fixing**, because the code for those systems was only tested with fakes. For each fix, add a test that runs on Windows where possible, and a changelog entry. Remove the Windows-only note from the changelog once every item is done.
+
+- [ ] **D1 CI.** From T0.5.1, T0.5.2 and T2.14. Switch on `ci.yml` and run the whole suite on Windows, macOS and Linux with Python 3.11 and 3.14. Run the manual network workflow once. *Possible fixes:* any behaviour the fakes didn't model, path separators, line endings, encodings, and temp-folder handling.
+- [ ] **D2 Fixtures and platform-only tests.** From T0.2 and every `macos_only`/`posix_only` test. Run the fixture smoke tests and all skipped platform tests for the first time. *Possible fixes:* `HOME` handling in `tmp_home`, and platform tests that never ran and may be wrong themselves.
+- [ ] **D3 PKCS#12 shim on Linux.** From T0.5.3, T1.3 and T1.5. On a current Linux distribution with OpenSSL 3 and without `oscrypto` installed, import `libadobe`, sign a test node, and run `auth create --anonymous` and `process` with a real ACSM. *Possible fixes:* the shim is pure Python, so problems are unlikely; any that appear are in the shim's algorithm support. Once this passes, decide whether to drop `oscrypto` from the dev group and retire the comparison tests.
+- [ ] **D4 File permissions.** From T0.4.5, T2.7.3, T2.11, T3.4.3, T3.5, T5.2, T9.2.1 and T11.2.2. On macOS and Linux, check that private folders are `0700` and that key-holding files (pending records, loans, backups) are `0600`, including files created before the folder existed. *Possible fixes:* the umask, missing `chmod` calls, and modes lost by atomic writes.
+- [ ] **D5 Paths and known folders.** From T2.4 and T2.13. Check `~/.config/book-loader/` and `.adobe/` on macOS and Linux, with `BOOK_LOADER_AUTH_DIR` and `--auth-dir`. Check the Downloads lookup on a Linux desktop with `XDG_DOWNLOAD_DIR`, on a Linux server without it, and on macOS. *Possible fixes:* `user-dirs.dirs` quoting and `$HOME` expansion.
+- [ ] **D6 MAC address parsers.** From T0.4.3 and T4.2.2. Capture real `ifconfig -a` output on macOS and `/sys/class/net/*/address` on Linux. Replace the hand-written fixtures and rerun the parser tests. *Possible fixes:* the parsers, for unexpected adapter types, bridges, and virtual interfaces.
+- [ ] **D7 Kobo on macOS.** From T4.2 and T6.5. Run `kobo list` and `kobo dedrm` against a real Kobo Desktop on macOS, the only platform Kobo works on in 0.1.0. Check that output names and bytes match what 0.1.0 produces. *Possible fixes:* the default library path, MAC reading, the SQLite copy of a database Kobo Desktop has open, and name normalisation on APFS.
+- [ ] **D8 Locks and file moves.** From T2.7 and T2.8. On POSIX, check that stale-lock detection spots a dead process, a real subprocess holds a lock, `atomic_write` keeps the old file on failure, and `safe_move` works between file systems. *Possible fixes:* process-liveness checks and `os.replace` across mounts.
+- [ ] **D9 Terminal and prompts.** From T6.2 and T7.2. In the macOS Terminal and a Linux terminal, check Rich output and colours, questionary menus, masked password input, the watched-downloads prompt, and plain output when piped. *Possible fixes:* terminal detection and prompt_toolkit behaviour.
+- [ ] **D10 Conversion.** From T4.3. Run the `weasyprint` tests with the native libraries installed on macOS and Linux. Check that Calibre is found at `/Applications/calibre.app/…` on macOS and on `PATH` on Linux. *Possible fixes:* Calibre discovery and the hint text for missing WeasyPrint libraries.
+- [ ] **D11 Cross-OS backups.** From T10.2 and T10.3. Back up a library on macOS and restore it on Windows, then the reverse, with NFD names, `:` in names, and case collisions. Then `process` an ACSM and `loan return` on the target. *Possible fixes:* name mapping and permissions after restore.
+- [ ] **D12 Manual release checks.** From T6.5 and T12.2. Run the whole T6.5 list on macOS or Linux. *Possible fixes:* anything the earlier items missed.

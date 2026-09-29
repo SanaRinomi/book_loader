@@ -115,7 +115,9 @@ class StepReporter:
         elif event == "notify":
             self.add(f"Notifying {self._where(url)}")
         elif event == "notify_result":
-            self.add("Fulfilment Notification: " + ("Success!" if data.get("ok") else "Failed!"), end="")
+            self.add(
+                "Fulfilment Notification: " + ("Success!" if data.get("ok") else "Failed!"), end=""
+            )
         elif event == "download":
             self.start(f"Downloading: {self._where(url)}")
         elif event == "redirect":

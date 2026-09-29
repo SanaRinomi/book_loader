@@ -36,7 +36,9 @@ class KoboLibrary:
     Reads book metadata and encryption keys from the Kobo SQLite database.
     """
 
-    DEFAULT_KOBODIR = Path.home() / "Library" / "Application Support" / "Kobo" / "Kobo Desktop Edition"
+    DEFAULT_KOBODIR = (
+        Path.home() / "Library" / "Application Support" / "Kobo" / "Kobo Desktop Edition"
+    )
 
     def __init__(self, kobodir: Path | None = None):
         if kobodir is not None:
@@ -109,8 +111,7 @@ class KoboLibrary:
             # Get encrypted file keys for this book
             encrypted_files: dict[str, bytes] = {}
             for ef_row in inner_cursor.execute(
-                "SELECT elementid, elementkey FROM content_keys "
-                "WHERE volumeid = ?",
+                "SELECT elementid, elementkey FROM content_keys " "WHERE volumeid = ?",
                 (volumeid,),
             ):
                 elementid, elementkey = ef_row
@@ -167,9 +168,7 @@ class KoboLibrary:
     def _get_mac_addrs(self) -> list[str]:
         """Get all MAC addresses on this machine using ifconfig."""
         macaddrs = []
-        pattern = re.compile(
-            r"\s(" + "[0-9a-f]{2}:" * 5 + r"[0-9a-f]{2})(\s|$)", re.IGNORECASE
-        )
+        pattern = re.compile(r"\s(" + "[0-9a-f]{2}:" * 5 + r"[0-9a-f]{2})(\s|$)", re.IGNORECASE)
         try:
             output = subprocess.check_output("/sbin/ifconfig -a", shell=True, encoding="utf-8")
             for m in pattern.findall(output):

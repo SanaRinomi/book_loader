@@ -59,7 +59,7 @@ Adobe ACSM 及 Kobo KEPUB 電子書 DRM 移除工具
 
 ## 安裝
 
-需要 Python 3.10 以上版本。
+需要 Python 3.11 以上版本。
 
 ```bash
 git clone https://github.com/spreered/book_loader.git

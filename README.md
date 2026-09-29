@@ -59,7 +59,7 @@ This project is developed for legitimate interoperability and personal backup pu
 
 ## Installation
 
-Requires Python 3.10 or later.
+Requires Python 3.11 or later.
 
 ```bash
 git clone https://github.com/spreered/book_loader.git

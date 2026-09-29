@@ -1,0 +1,23 @@
+# T0.5.2. Tests marked `network`, which talk to real Adobe servers. Manual only, and
+# NOT run during the refactor (REFACTOR_PLAN §2.1, deferred item D1).
+#
+# Secrets use the BL_TEST_ prefix, not BOOK_LOADER_: the test suite clears every
+# BOOK_LOADER_* variable so a developer's settings can't leak into tests.
+name: Network tests
+
+on:
+  workflow_dispatch:
+
+jobs:
+  network:
+    # Windows is the only platform verified during the refactor.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked --python 3.14
+      # Exits with code 5 ("no tests collected") until the first network test exists.
+      - run: uv run --no-sync pytest -m network -v
+        env:
+          BL_TEST_ADOBE_ID_EMAIL: ${{ secrets.BL_TEST_ADOBE_ID_EMAIL }}
+          BL_TEST_ADOBE_ID_PASSWORD: ${{ secrets.BL_TEST_ADOBE_ID_PASSWORD }}

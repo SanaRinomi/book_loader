@@ -1,0 +1,31 @@
+# T0.5.1. Written during the refactor but NOT run: no hosted CI is available until the
+# refactor is done (REFACTOR_PLAN §2.1). Until then, tests/tools/check.py is the gate.
+#
+# Deferred item D1 (REFACTOR_ACTION_PLAN.md) switches this on:
+#   1. uncomment the push and pull_request triggers below
+#   2. update the action versions to their current major releases
+#   3. expect macOS and Linux failures the Windows-only work could not catch
+name: CI
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+  # pull_request:
+
+jobs:
+  check:
+    name: ${{ matrix.os }}, Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      # The same script as the local check: sync, ruff, black --check, pyright (once
+      # configured) and pytest with coverage, for this job's Python version. The script
+      # itself needs Python 3.11+ (tomllib), hence the fixed launcher version.
+      - run: uv run --no-project --python 3.14 python tests/tools/check.py --python ${{ matrix.python }}

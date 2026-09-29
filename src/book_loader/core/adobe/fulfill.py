@@ -30,7 +30,11 @@ class ACSMFulfiller:
         self.account = account
 
     def fulfill(
-        self, acsm_path: Path, output_dir: Path, verbose: bool = False, status: StatusCallback = None
+        self,
+        acsm_path: Path,
+        output_dir: Path,
+        verbose: bool = False,
+        status: StatusCallback = None,
     ) -> Path:
         """
         Fulfill ACSM file and download encrypted ebook.
@@ -117,7 +121,9 @@ class ACSMFulfiller:
                 )
             except Exception as e:
                 work_copy.unlink(missing_ok=True)
-                raise ACSMFulfillmentError(f"Could not use the downloaded file: {redact_text(str(e))}")
+                raise ACSMFulfillmentError(
+                    f"Could not use the downloaded file: {redact_text(str(e))}"
+                )
 
         self._clear_pending(acsm_path)
         return Path(output_path)
@@ -179,21 +185,29 @@ class ACSMFulfiller:
     def _save_pending(self, acsm_path: Path, output_dir: Path, info: dict) -> Path:
         """Save the fulfillment and write a page with the download link; returns the page path."""
         link_file = (output_dir / f"{info['book_name']} - download link.html").resolve()
-        link_file.write_text(_LINK_PAGE.format(
-            title=html.escape(info["book_name"]),
-            url=html.escape(info["download_url"], quote=True),
-            acsm=html.escape(str(acsm_path.resolve())),
-        ), encoding="utf-8")
+        link_file.write_text(
+            _LINK_PAGE.format(
+                title=html.escape(info["book_name"]),
+                url=html.escape(info["download_url"], quote=True),
+                acsm=html.escape(str(acsm_path.resolve())),
+            ),
+            encoding="utf-8",
+        )
 
         pending = self._pending_path(acsm_path)
         pending.parent.mkdir(mode=0o700, exist_ok=True)
-        pending.write_text(json.dumps({
-            "saved_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
-            "acsm": acsm_path.name,
-            "key_fingerprint": self._key_fingerprint(),
-            "link_file": str(link_file),
-            "info": info,
-        }), encoding="utf-8")
+        pending.write_text(
+            json.dumps(
+                {
+                    "saved_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    "acsm": acsm_path.name,
+                    "key_fingerprint": self._key_fingerprint(),
+                    "link_file": str(link_file),
+                    "info": info,
+                }
+            ),
+            encoding="utf-8",
+        )
         pending.chmod(0o600)
         return link_file
 
@@ -207,7 +221,10 @@ class ACSMFulfiller:
             # Saved under a different authorization; its license can't be decrypted with this key.
             from . import libadobe
 
-            libadobe.report("warning", message="Ignoring a saved license that belongs to a different authorization")
+            libadobe.report(
+                "warning",
+                message="Ignoring a saved license that belongs to a different authorization",
+            )
             return None
         return data.get("info")
 

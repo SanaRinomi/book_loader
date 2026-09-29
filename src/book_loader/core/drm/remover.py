@@ -9,9 +9,7 @@ from ...utils.errors import DRMRemovalError
 class DRMRemover:
     """Unified DRM removal interface."""
 
-    def remove_drm(
-        self, encrypted_path: Path, output_path: Path, user_key: bytes
-    ) -> None:
+    def remove_drm(self, encrypted_path: Path, output_path: Path, user_key: bytes) -> None:
         """
         Remove DRM from ebook.
 
@@ -41,9 +39,7 @@ class DRMRemover:
         except Exception as e:
             raise DRMRemovalError(f"DRM removal failed: {e}")
 
-    def _decrypt_epub(
-        self, encrypted_path: Path, output_path: Path, user_key: bytes
-    ) -> None:
+    def _decrypt_epub(self, encrypted_path: Path, output_path: Path, user_key: bytes) -> None:
         """Decrypt EPUB file."""
         from .ineptepub import decryptBook
 
@@ -57,9 +53,7 @@ class DRMRemover:
         elif result != 0:
             raise DRMRemovalError(f"EPUB decryption failed, error code: {result}")
 
-    def _decrypt_pdf(
-        self, encrypted_path: Path, output_path: Path, user_key: bytes
-    ) -> None:
+    def _decrypt_pdf(self, encrypted_path: Path, output_path: Path, user_key: bytes) -> None:
         """Decrypt PDF file."""
         from .ineptpdf import decryptBook
 

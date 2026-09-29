@@ -120,16 +120,24 @@ class AdobeAccount:
 
             libadobe.createDeviceKeyFile()
             steps = [
-                ("creating the device", lambda: libadobeAccount.createDeviceFile(randomSerial=True, useVersionIndex=1)),
+                (
+                    "creating the device",
+                    lambda: libadobeAccount.createDeviceFile(randomSerial=True, useVersionIndex=1),
+                ),
                 ("creating the user", lambda: libadobeAccount.createUser(useVersionIndex=1)),
                 ("signing in", lambda: libadobeAccount.signIn(method, email, password)),
-                ("activating the device", lambda: libadobeAccount.activateDevice(useVersionIndex=1)),
+                (
+                    "activating the device",
+                    lambda: libadobeAccount.activateDevice(useVersionIndex=1),
+                ),
             ]
             for name, run in steps:
                 result = run()
                 ok, message = (result[0], result[1]) if isinstance(result, tuple) else (result, "")
                 if not ok:
-                    raise AuthorizationError(f"{failure} while {name}" + (f": {message}" if message else ""))
+                    raise AuthorizationError(
+                        f"{failure} while {name}" + (f": {message}" if message else "")
+                    )
 
         except AuthorizationError:
             raise
@@ -151,9 +159,7 @@ class AdobeAccount:
             root = tree.getroot()
 
             # Find <privateLicenseKey>
-            key_element = root.find(
-                ".//{http://ns.adobe.com/adept}privateLicenseKey"
-            )
+            key_element = root.find(".//{http://ns.adobe.com/adept}privateLicenseKey")
             if key_element is None or not key_element.text:
                 raise AuthorizationError("Cannot extract private key from authorization file")
 
