@@ -445,7 +445,7 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
 - **Tests:** a parser test for `user-dirs.dirs`; `windows_only`, the Known Folder result is an existing folder; the override wins. A real Linux desktop and macOS are deferred (D5).
 
 ### T2.14 Type checking (S)
-- [ ] **T2.14.1** Add a pyright config that checks `domain`, `infra` and each new package as it appears. The old `core`, `utils` and `cli.py` are excluded until they're deleted, and `_vendor` is always excluded. Add it to the local check (T0.5.4), which the CI workflow also runs.
+- [x] **T2.14.1** Add a pyright config that checks `domain`, `infra` and each new package as it appears. The old `core`, `utils` and `cli.py` are excluded until they're deleted, and `_vendor` is always excluded. Add it to the local check (T0.5.4), which the CI workflow also runs. The config is `[tool.pyright]` in `pyproject.toml`: it checks all of `src/book_loader` (so a new package is checked from its first file) and the tests, leaving out the characterization tests of the old code. Libraries without type information (`asn1crypto`) count as untyped (`useLibraryCodeForTypes = false`), and `lxml-stubs` joins the dev group for `lxml`.
 - **Tests:** the local check runs pyright. It fails on a deliberate type error, which is then reverted.
 
 **Phase 2 exit:** every infra and domain module is fully tested, with at least 90% line coverage for these packages. The old CLI is unchanged, apart from where it imports redact.

@@ -37,6 +37,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 from types import SimpleNamespace
+from typing import Any
 
 from asn1crypto import pem
 from asn1crypto.algos import EncryptionAlgorithm
@@ -140,7 +141,9 @@ def _decrypt(algorithm: EncryptionAlgorithm, ciphertext: bytes, password: bytes)
         if cipher == "tripledes":
             decryptor = DES3.new(key, DES3.MODE_CBC, iv=iv)
         else:
-            decryptor = ARC2.new(key, ARC2.MODE_CBC, iv=iv, effective_keylen=8 * key_length)
+            # pycryptodome's type stubs leave out effective_keylen, which ARC2.new accepts.
+            options: dict[str, Any] = {"iv": iv, "effective_keylen": 8 * key_length}
+            decryptor = ARC2.new(key, ARC2.MODE_CBC, **options)
         return _unpad(decryptor.decrypt(ciphertext), 8, name)
 
     if name == "pbes2":

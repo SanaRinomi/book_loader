@@ -63,6 +63,25 @@ target-version = "py311"
 force-exclude = true
 extend-exclude = ["**/_vendor/**"]
 
+[tool.pyright]
+# T2.14: the new packages and the tests are type-checked. The old core/, utils/ and
+# cli.py are left out until Phase 6 deletes them, with the characterization tests that
+# exercise them; vendored code is never checked (REFACTOR_PLAN §2). Add each new
+# package under src/book_loader as it appears; it is checked unless excluded here.
+include = ["src/book_loader", "tests"]
+exclude = [
+    "src/book_loader/core",
+    "src/book_loader/utils",
+    "src/book_loader/cli.py",
+    "**/_vendor",
+    "tests/characterization",
+    "**/__pycache__",
+]
+typeCheckingMode = "standard"
+# Libraries without type information (asn1crypto) count as untyped instead of having
+# their types guessed from their source, which gives wrong types such as "Void".
+useLibraryCodeForTypes = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = '-m "not network and not live"'
@@ -79,6 +98,7 @@ markers = [
 dev = [
     "black>=26.1.0",
     "cryptography>=50.0.1",
+    "lxml-stubs>=0.5.1",
     "oscrypto>=1.3.0",
     "pyright>=1.1.414",
     "pytest>=9.0.2",

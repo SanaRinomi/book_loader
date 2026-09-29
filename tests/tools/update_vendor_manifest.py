@@ -88,7 +88,7 @@ def differences(recorded: dict[str, str], actual: dict[str, str]) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").partition("\n")[0])
     parser.add_argument(
         "--check", action="store_true", help="only report differences; exit 1 if any"
     )

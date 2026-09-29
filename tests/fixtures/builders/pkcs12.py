@@ -125,7 +125,7 @@ def build_pkcs12(
     )
 
 
-def reference(data: bytes, password: bytes) -> Reference:
+def reference(data: bytes, password: bytes | None) -> Reference:
     key, cert, others = pkcs12.load_key_and_certificates(data, password)
     assert key is not None and cert is not None
     der = serialization.Encoding.DER

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import tomllib
+
 from tests.tools.check import ROOT, environment_for, plan, pyright_configured
 
 
@@ -51,3 +53,14 @@ def test_pyright_detection(tmp_path):
     assert not pyright_configured(tmp_path)
     (tmp_path / "pyproject.toml").write_text("[tool.pyright]\ninclude = []\n", encoding="utf-8")
     assert pyright_configured(tmp_path)
+
+
+def test_the_project_is_type_checked():
+    """T2.14: new packages and tests are checked; old and vendored code is not."""
+    config = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    pyright = config["tool"]["pyright"]
+    assert pyright_configured()
+    assert set(pyright["include"]) == {"src/book_loader", "tests"}
+    assert {"**/_vendor", "src/book_loader/core", "src/book_loader/utils"} <= set(
+        pyright["exclude"]
+    )

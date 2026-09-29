@@ -15,6 +15,7 @@ import socket
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 import time_machine
@@ -173,5 +174,5 @@ def cli_runner() -> CliRunner:
     """A Click ``CliRunner`` whose results keep stderr separate from stdout."""
     # Click 8.2 always separates them and dropped ``mix_stderr``; 8.1 mixes by default.
     if "mix_stderr" in inspect.signature(CliRunner.__init__).parameters:
-        return CliRunner(mix_stderr=False)
+        return cast(Any, CliRunner)(mix_stderr=False)  # Click 8.2's types don't have it
     return CliRunner()

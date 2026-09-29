@@ -29,6 +29,7 @@ import tempfile
 import types
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any, cast
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 
@@ -210,7 +211,7 @@ def gen_kobo_keys() -> dict[str, bytes]:
     for mac in KOBO_MACS:
         for user_id in KOBO_USER_IDS:
             stub = types.SimpleNamespace(_get_user_ids=lambda uid=user_id: [uid])
-            keys = KoboLibrary._compute_userkeys(stub, mac)
+            keys = KoboLibrary._compute_userkeys(cast(Any, stub), mac)
             for hash_key, key in zip(KOBO_HASH_KEYS, keys, strict=True):
                 cases.append(
                     {"mac": mac, "user_id": user_id, "hash_key": hash_key, "userkey": key.hex()}
@@ -325,7 +326,7 @@ def gen_v0() -> dict[str, bytes]:
         acsm.write_bytes((FIXTURES / "v0" / "pending_book.acsm").read_bytes())
         account = types.SimpleNamespace(auth_dir=auth.path, get_device_key=lambda: auth.device_key)
         with time_machine.travel("2026-01-01 00:00:00", tick=False):
-            link_file = ACSMFulfiller(account)._save_pending(acsm, acsm.parent, info)
+            link_file = ACSMFulfiller(cast(Any, account))._save_pending(acsm, acsm.parent, info)
         record = next((auth.path / "pending").glob("*.json"))
 
         # Absolute paths from this temp folder are replaced with a neutral placeholder.
@@ -417,7 +418,7 @@ def _json(data) -> bytes:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").partition("\n")[0])
     parser.add_argument("targets", nargs="*", help=f"any of: {', '.join(GENERATORS)}")
     parser.add_argument("--force", action="store_true", help="overwrite changed golden files")
     args = parser.parse_args(argv)

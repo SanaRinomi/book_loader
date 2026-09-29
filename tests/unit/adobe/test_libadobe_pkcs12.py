@@ -50,6 +50,7 @@ def account(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         monkeypatch.setattr(libadobe, name, getattr(libadobe, name, None), raising=False)
     auth = build_auth_folder(tmp_path / ".adobe")
     password = device_password(auth.path)
+    data = b""
     for _ in range(20):
         data = build_pkcs12("3des", password=password, seed=ACCOUNT_SEED)
         if oscrypto_reads(data, password):
@@ -61,7 +62,7 @@ def account(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def pkcs12_of(account: Path) -> bytes:
     tree = etree.parse(str(account / "activation.xml"))
-    return base64.b64decode(tree.findtext(".//{http://ns.adobe.com/adept}pkcs12"))
+    return base64.b64decode(tree.findtext(".//{http://ns.adobe.com/adept}pkcs12") or "")
 
 
 def test_libadobe_uses_the_shim():
@@ -72,7 +73,9 @@ def test_libadobe_uses_the_shim():
 
 def test_signature_verifies_with_the_certificate_key(account: Path):
     node = request_node()
-    signature = base64.b64decode(libadobe.sign_node(node))
+    signed = libadobe.sign_node(node)
+    assert signed is not None
+    signature = base64.b64decode(signed)
     # Adobe's signature: textbook RSA on a PKCS#1 v1.5 type 1 block around the bare SHA-1.
     key = rsa_key(ACCOUNT_SEED)
     size = (key.n.bit_length() + 7) // 8
