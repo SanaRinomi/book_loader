@@ -12,6 +12,7 @@ import os
 import stat
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -416,6 +417,31 @@ class TestSafeMove:
         assert dst.stat().st_mtime == 1_700_000_000
         assert not src.exists()
         assert leftovers(dst.parent) == []
+
+    @pytest.mark.posix_only
+    def test_across_real_file_systems(self, tmp_path, monkeypatch):
+        """No forced error: /dev/shm is a tmpfs on Linux, so os.replace really fails."""
+        shm = Path("/dev/shm")
+        if not (shm.is_dir() and os.access(shm, os.W_OK)):
+            pytest.skip("no writable /dev/shm")
+        if shm.stat().st_dev == tmp_path.stat().st_dev:
+            pytest.skip("/dev/shm is on the same file system as the temp folder")
+        copied = []
+        real_copy_move = fs._copy_move
+        monkeypatch.setattr(
+            fs, "_copy_move", lambda src, dst: (copied.append(src), real_copy_move(src, dst))
+        )
+        with tempfile.TemporaryDirectory(dir=shm) as other:
+            src, dst = Path(other) / "a.epub", tmp_path / "b.epub"
+            data = os.urandom(1024 * 1024 + 3)
+            src.write_bytes(data)
+            os.utime(src, (1_700_000_000, 1_700_000_000))
+            safe_move(src, dst)
+            assert copied == [src]
+            assert dst.read_bytes() == data
+            assert dst.stat().st_mtime == 1_700_000_000
+            assert not src.exists()
+            assert leftovers(tmp_path) == []
 
     def test_windows_cross_drive_error_is_recognised(self, tmp_path, monkeypatch):
         real = os.replace
