@@ -1019,7 +1019,11 @@ All questions raised while planning have been answered (2026-09-28); the answers
 | Default backup selection | Named presets, plus `custom` with saved presets; scripts must choose (§10.7) |
 | DRM removal for loans | Kept, with a reminder of the terms (§9.7) |
 
-No open questions remain. New ones found during implementation go here.
+New questions found during implementation:
+
+| Question | Found | Status |
+|---|---|---|
+| `redact_url` keeps the host, even when it is an IP address, such as a home-network address. `redact_text` masks IP addresses elsewhere. Should IP hosts be masked in the new `infra/redact`? | T0.4.1 (2026-09-29); pinned as-is in `golden/redact.json` | Open |
 
 ## 18. Deferred until after the refactor
 

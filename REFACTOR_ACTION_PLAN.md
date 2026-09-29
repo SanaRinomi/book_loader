@@ -33,6 +33,7 @@ tests/
 ├── conftest.py            shared fixtures: tmp HOME, isolated auth dir, fake Downloads, frozen clock
 ├── fixtures/
 │   ├── builders/          code that builds test data at runtime
+│   │   ├── adobe_auth.py  synthetic authorization folder: activation.xml, device.xml, devicesalt (T0.4)
 │   │   ├── adept_epub.py  synthetic ADEPT-encrypted EPUB + matching RSA key (T0.4.6)
 │   │   ├── tiny_pdf.py    minimal PDF with an EBX_HANDLER encrypt dictionary (T0.4.7)
 │   │   ├── kobo.py        synthetic Kobo.sqlite + encrypted KEPUB (T0.4.3)
@@ -41,6 +42,7 @@ tests/
 │   ├── v0/                data written by 0.1.0: pending JSON, backup .tar.gz, link pages
 │   ├── os_output/         captured ifconfig / getmac / Get-NetAdapter / /sys output
 │   └── golden/            expected values: safe_filename table, key vectors, help option sets
+├── tools/                 dump_help.py (T0.3), make_fixtures.py (T0.4): regenerate golden, v0 and OS output files
 ├── fakes/                 FakeFulfiller, FakeDecryptor, FakeConverter, FakePrompter, RecordingReporter, fake libadobe
 ├── unit/                  one folder per package (domain, infra, adobe, drm, kobo, epub, conversion, library)
 ├── integration/           services with fakes at the network edge
@@ -104,14 +106,14 @@ Goal: pin today's behaviour in tests and set up tooling and a local check before
 ### T0.4 Characterization tests of the current code (L)
 These tests pin what 0.1.0 does today. They live in `tests/characterization/`, except for builders and golden files, which later phases reuse.
 
-- [ ] **T0.4.1 Redaction** (`utils/redact.py`):
+- [x] **T0.4.1 Redaction** (`utils/redact.py`):
   - a table of URLs, header pairs and text blocks (XML with UUIDs, emails, IPs, tokens), each with the expected output
   - saved as `golden/redact.json`
-- [ ] **T0.4.2 `safe_filename`** (`core/kobo/decryptor.py`):
+- [x] **T0.4.2 `safe_filename`** (`core/kobo/decryptor.py`):
   - at least 40 titles: ASCII, punctuation, CJK, accented letters, emoji, slashes, colons, very long titles, empty
   - their outputs saved as `golden/safe_filename.json`
   - this file is the contract for plain-mode Kobo names (REFACTOR_PLAN §5.11)
-- [ ] **T0.4.3 Kobo builder and tests:**
+- [x] **T0.4.3 Kobo builder and tests:**
   - **Builder** `builders/kobo.py`:
     - creates `Kobo.sqlite` with the tables and columns the current queries use: `content(ContentID, Title, Attribution)`, `content_keys(volumeid, elementid, elementkey)`, `user(UserID)`
     - creates a `kepub/<volumeid>` ZIP whose entries are AES-ECB encrypted with page keys, each page key wrapped with a user key derived from a chosen fake MAC, user ID and hash key
@@ -123,30 +125,31 @@ These tests pin what 0.1.0 does today. They live in `tests/characterization/`, e
     - DRM-free books are copied as they are
     - a wrong-key-only setup raises `KoboDecryptionError`
     - a missing folder raises `KoboLibraryNotFoundError`
+    - added 2026-09-29, as `xfail(strict=True)` for known bugs that T4.2 must fix: a change still in the WAL file is listed, and an XHTML file starting with a UTF-8 BOM is decrypted with the right key
   - **Key vectors:** save the derived key for the fixed inputs as `golden/kobo_keys.json`.
   - **OS output fixtures:** save real `getmac` and `Get-NetAdapter` output from this Windows machine in `fixtures/os_output/`. The macOS `ifconfig -a` and Linux `/sys/class/net` fixtures are written by hand from documented examples, and replaced with real captures later (deferred D6).
-- [ ] **T0.4.4 Backup helpers** (`cli.backup_auth`, `list_backups`, `restore_auth`):
+- [x] **T0.4.4 Backup helpers** (`cli.backup_auth`, `list_backups`, `restore_auth`):
   - a round trip into a folder with the same name
   - backups listed newest first
   - the known bug as an `xfail(strict=True)` test: restoring into a folder with a different name puts the files in the wrong place. T3.8 must make it pass.
   - save one archive to `fixtures/v0/auth_anonymous_20260101_000000.tar.gz`, and one named in `reset`'s style (`auth_backup_*`)
-- [ ] **T0.4.5 Pending store** (`ACSMFulfiller._save_pending`, `_load_pending`, `_clear_pending`) with a stub account whose `get_device_key()` returns fixed bytes:
+- [x] **T0.4.5 Pending store** (`ACSMFulfiller._save_pending`, `_load_pending`, `_clear_pending`) with a stub account whose `get_device_key()` returns fixed bytes:
   - JSON fields and file mode (`0600` on POSIX; `posix_only`, deferred D4)
   - the link page is written into the folder passed in
   - a mismatched fingerprint is ignored
   - clearing deletes both files
   - save a v0 record and link page to `fixtures/v0/`
-- [ ] **T0.4.6 Synthetic ADEPT EPUB builder** (`builders/adept_epub.py`):
+- [x] **T0.4.6 Synthetic ADEPT EPUB builder** (`builders/adept_epub.py`):
   - makes an RSA key pair (pycryptodome), whose private key in DER form is the "device key"
   - makes a random 16-byte AES book key
   - adds `META-INF/rights.xml` containing `<adept:encryptedKey>` (the book key encrypted with RSA PKCS#1 v1.5, base64) and no `keyType`, so no hardening applies
   - adds `META-INF/encryption.xml` listing the encrypted entries
   - compresses each listed entry with raw deflate, then encrypts it with AES-CBC and a random IV at the front
   - **Test:** the vendored `ineptepub.decryptBook(device_key, in, out)` returns `0` and the output's entries equal the plaintext; a plain EPUB returns `1`.
-- [ ] **T0.4.7 Tiny PDF builder and `libpdf` test:**
+- [x] **T0.4.7 Tiny PDF builder and `libpdf` test:**
   - a hand-written PDF with an `/Encrypt` dictionary whose `/Filter` is `/EBX_HANDLER`
   - **Test:** `libpdf.patch_drm_into_pdf` returns success and appends an incremental update containing `ADEPT_LICENSE` and `EBX_BOOKID`.
-- [ ] **T0.4.8 Workflow characterization** (`BookLoader.process_acsm` with `ACSMFulfiller` and `DRMRemover` monkeypatched):
+- [x] **T0.4.8 Workflow characterization** (`BookLoader.process_acsm` with `ACSMFulfiller` and `DRMRemover` monkeypatched):
   - 3 steps, or 4 with `--to-pdf`
   - encrypted file and `.temp/` removed on success
   - `--keep-encrypted` keeps them
@@ -155,7 +158,7 @@ These tests pin what 0.1.0 does today. They live in `tests/characterization/`, e
   - the **data-loss bug** as `xfail(strict=True)`: an existing `Title.epub` in the output folder is overwritten and then deleted by `--to-pdf`. T5.1 must make it pass.
   - the manual-download loop: wrong file, then right file
   - with `manual_download=None`, `ManualDownloadRequired` is raised
-- [ ] **T0.4.9 CLI characterization** (`CliRunner`):
+- [x] **T0.4.9 CLI characterization** (`CliRunner`):
   - `info` exits 0 and shows "Not authorized" on an empty auth folder
   - `auth info` does the same
   - `auth create` when already authorized prints the warning and exits 0
@@ -163,7 +166,7 @@ These tests pin what 0.1.0 does today. They live in `tests/characterization/`, e
   - `kobo dedrm --overwrite --skip-existing` exits 1 with the message
   - `convert` on a missing file exits 2 (Click's check)
   - `process` without a terminal prints the "finish later" command and exits 1 when downloading is blocked (fulfiller monkeypatched)
-- [ ] **T0.4.10 Fulfillment reply fixtures** in `fixtures/replies/`:
+- [x] **T0.4.10 Fulfillment reply fixtures** in `fixtures/replies/`:
   - synthetic XML shaped like the structures `libadobeFulfill.parse_fulfillment` and `updateLoanReturnData` read, for an EPUB, a PDF, and a returnable loan with a `permissions/display/until` date
   - **Test:** `parse_fulfillment` gives the expected `book_name`, format and URL for each, which checks the fixtures themselves.
 
@@ -177,7 +180,7 @@ No remote CI is available during the refactor (REFACTOR_PLAN §2.1). The local c
 - [ ] **T0.5.4** A local check script, `uv run python tests/tools/check.py`. It runs `uv sync --locked`, ruff, `black --check`, pyright (from Phase 2) and `pytest` with coverage, first under Python 3.11 and then under 3.14, and stops at the first failure. The CI workflow in T0.5.1 runs the same script, so both stay in step.
 - **Tests:** the local check passes on Windows under both Python versions. A deliberate ruff error makes it fail, and is then reverted.
 
-**Phase 0 exit:** the local check passes on Windows under Python 3.11 and 3.14, and the CI workflows are written but not run. The golden files (`redact`, `safe_filename`, `kobo_keys`, `help_options`) and the v0 fixtures are committed. The two strict-xfail tests (restore location, `--to-pdf` data loss) are present.
+**Phase 0 exit:** the local check passes on Windows under Python 3.11 and 3.14, and the CI workflows are written but not run. The golden files (`redact`, `safe_filename`, `kobo_keys`, `help_options`) and the v0 fixtures are committed. The four strict-xfail tests (restore location, `--to-pdf` data loss, Kobo WAL, Kobo BOM) are present. All tests block network access except to this machine unless marked `network` or `live`.
 
 ---
 
@@ -1005,6 +1008,8 @@ P0 ─► P1 ─► P2 ─┬─► P3 (T3.1 before T3.7) ─┐
 | Help option parity | T0.3 | every phase |
 | `safe_filename` golden values | T0.4.2 | every phase (via `names.kobo_plain_name` from T2.6) |
 | Kobo key vectors | T0.4.3 | every phase |
+| Kobo change still in the WAL is listed (strict xfail) | T0.4.3 | T4.2 |
+| Kobo XHTML with a UTF-8 BOM is decrypted (strict xfail) | T0.4.3 | T4.2 |
 | Redaction golden values | T0.4.1 | every phase |
 | Vendor manifest | T1.4 | every phase |
 | PKCS#12 shim matches `oscrypto` | T1.5 | every phase, while `oscrypto` is in the dev group |
