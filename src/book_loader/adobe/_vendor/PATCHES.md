@@ -51,6 +51,33 @@ upstream counterpart of the download and license code added to `libadobeFulfill.
 - **Whitespace.** Trailing spaces are removed on some lines next to local changes, for example
   `try: ` → `try:`. The diff shows these, but they change nothing.
 
+## Planned change: replace `oscrypto` with a shim
+
+Decided on 2026-09-29 (T1.3; REFACTOR_PLAN decision 21 and §16). T1.5 makes the change.
+When it lands, move this section into [libadobe.py](#libadobepy), and add `..pkcs12` to the
+imports that leave `_vendor/`.
+
+- **Why.** `libadobe.py` imports `oscrypto`, whose last release, 1.3.0 from March 2022, has a
+  known bug on some Linux systems: it fails to detect OpenSSL 3.x versions and raises "Error
+  detecting the version of libcrypto". `libadobe` imports `oscrypto.asymmetric` at module
+  level, so there every Adobe command could fail, including `auth create`. Windows and macOS
+  use their own crypto libraries and aren't affected.
+- **Why a shim rather than a workaround or a pinned `oscrypto` commit.** No Linux system is
+  available during the refactor (REFACTOR_PLAN §2.1), so whether the bug affects book-loader
+  can't be checked (T0.5.3 recorded "not checked"). A shim in pure Python loads no native
+  OpenSSL, so the bug can't occur, whatever the answer. It is checked on Linux after the
+  refactor (deferred item D3).
+- **What `libadobe` uses.** The following three names, only to read the PKCS#12 bundle in
+  `activation.xml`. Signing itself already uses `pycryptodome` through `customRSA`.
+  - `keys.parse_pkcs12(data, password)`, in `get_cert_from_pkcs12()` and `sign_node()`
+  - `dump_certificate(cert, encoding="der")`, in `get_cert_from_pkcs12()`
+  - `dump_private_key(key, None, "der")`, in `sign_node()`
+- **The vendored change.** Only the two import lines,
+  `from oscrypto import keys` and `from oscrypto.asymmetric import dump_certificate, dump_private_key`,
+  which will import the same names from `..pkcs12` (`book_loader/adobe/pkcs12.py`, project
+  code). `oscrypto` then moves to the dev dependencies, where tests check that the shim's
+  results are byte-identical to it.
+
 ## customRSA.py
 
 Unchanged.

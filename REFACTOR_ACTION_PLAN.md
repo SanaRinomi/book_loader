@@ -214,7 +214,8 @@ Goal: vendored files move to their final home with only import changes, and are 
 
 ### T1.3 oscrypto decision (S)
 Decided 2026-09-29: replace `oscrypto` with a shim (REFACTOR_PLAN decision 21, §16). T1.5 builds it.
-- [ ] **T1.3.1** Record the decision and the reason (the OpenSSL 3 bug on Linux, which can't be checked during the refactor) in `adobe/_vendor/PATCHES.md` and the README draft notes.
+- [x] **T1.3.1** Record the decision and the reason (the OpenSSL 3 bug on Linux, which can't be checked during the refactor) in `adobe/_vendor/PATCHES.md` and the README draft notes.
+  - Done 2026-09-29: `PATCHES.md` has a "Planned change" section, which T1.5 moves into the `libadobe.py` section. No README draft file exists, and the README describes the released version, so the README note is a sub-task of T6.7.2 instead.
 - **Tests:** none (documentation).
 
 ### T1.4 Vendor guard (S)
@@ -771,6 +772,7 @@ Run and record in the PR, on Windows (including Git Bash). The same checks on ma
   - the fixes from REFACTOR_PLAN §6
   - a note that this release was tested on Windows only, and that macOS and Linux users may hit problems (REFACTOR_PLAN §2.1)
 - [ ] **T6.7.2** README and README.zh-TW sections for the changed behaviour (the full rewrite comes in Phase 12).
+  - a Linux note (T1.3): book-loader no longer needs `oscrypto`. The 0.1.0 failure on some Linux systems with OpenSSL 3 ("Error detecting the version of libcrypto") can't occur any more, because a pure-Python PKCS#12 reader replaces it. That reader is tested on Windows against `oscrypto`, and on Linux only once D3 is done
 - [ ] **T6.7.3** Bump the version and tag `v0.2.0`.
 - **Tests:** the local check passes on the tag, and the Windows part of T6.5 is complete.
 
