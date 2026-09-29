@@ -63,15 +63,15 @@ The default run is `-m "not network and not live"`. `weasyprint` tests skip them
 Goal: pin today's behaviour in tests and set up tooling and CI before any code moves. Only packaging and tooling change here; no production behaviour does.
 
 ### T0.1 Tooling and packaging (S)
-- [ ] **T0.1.1** In `pyproject.toml`:
+- [x] **T0.1.1** In `pyproject.toml`:
   - set `requires-python = ">=3.11"`
   - update the classifiers: drop 3.10, add 3.14
   - set black and ruff `target-version` to py311
   - fix the description and keywords to mention Kobo
-- [ ] **T0.1.2** Move the dev tools to `[dependency-groups] dev`: pytest, pytest-cov, black, ruff, and pyright (pyright is used from Phase 2). Remove `[project.optional-dependencies] dev`.
-- [ ] **T0.1.3** Add `[tool.pytest.ini_options]` with the markers above, `addopts = -m "not network and not live"`, and `testpaths = ["tests"]`.
-- [ ] **T0.1.4** Run `uv lock` and commit `uv.lock`.
-- [ ] **T0.1.5** Create `CHANGELOG.md` with an "Unreleased" section.
+- [x] **T0.1.2** Move the dev tools to `[dependency-groups] dev`: pytest, pytest-cov, black, ruff, and pyright (pyright is used from Phase 2). Remove `[project.optional-dependencies] dev`.
+- [x] **T0.1.3** Add `[tool.pytest.ini_options]` with the markers above, `addopts = -m "not network and not live"`, and `testpaths = ["tests"]`.
+- [x] **T0.1.4** Run `uv lock` and commit `uv.lock`.
+- [x] **T0.1.5** Create `CHANGELOG.md` with an "Unreleased" section.
 - **Tests:**
   - `uv sync` works on a clean checkout.
   - `uv run book-loader --help` and `uv run python -m book_loader.cli --help` work.
