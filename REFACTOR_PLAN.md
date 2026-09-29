@@ -267,12 +267,12 @@ src/book_loader/
     - **Git Bash / mintty on Windows** reports no terminal, and prompt_toolkit fails there with `NoConsoleScreenBufferError`. When `--interactive` is forced there, `PlainPrompter` uses numbered menus and line input instead of questionary.
 11. **Naming rules (`infra/names.py`).**
     - **Plain mode keeps today's names exactly.** Adobe names come from the vendored `parse_fulfillment`, which keeps letters, digits, spaces, `-` and `_`. Kobo names come from today's `safe_filename`, with identical output.
-    - **Two Kobo books with the same name** are told apart by adding the author, then a short volume ID. The result is the same on every run, so `--skip-existing` keeps recognising earlier output.
+    - **Two Kobo books with the same name** are told apart by adding the author, then a short volume ID. The result depends only on the set of books, not their order, so it is the same on every run and `--skip-existing` keeps recognising earlier output. One exception: when a second book with the same name is added to Kobo later, the first one's name gains its author too, so its earlier plain-named file isn't recognised any more.
     - **Library naming templates:**
       - names are normalised to Unicode NFC, so macOS and Windows copies match
-      - characters Windows rejects are replaced, and trailing dots and spaces removed
+      - characters Windows rejects are replaced, and leading and trailing dots and spaces removed
       - reserved names (`CON`, `NUL`, `COM1`, …) are avoided
-      - each folder or file name is capped at 100 characters, and the full path is checked against Windows' 260-character limit (long-path support is used when enabled)
+      - each folder or file name is capped at 100 characters and 255 UTF-8 bytes, and the full path is checked against Windows' 260-character limit (long-path support is used when enabled)
     - The same rules apply when names are generated and when they are restored (§10.7).
 
 ## 6. Fixes during the rewrite

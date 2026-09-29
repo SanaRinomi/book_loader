@@ -329,15 +329,15 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - no folders or files are created (checked with a watched temp folder)
 
 ### T2.6 `infra/names.py` (M)
-- [ ] **T2.6.1** `kobo_plain_name(title)`: must reproduce `golden/safe_filename.json` exactly.
-- [ ] **T2.6.2** `disambiguate(name, author, volume_id)`: add the author, then an 8-character volume ID, the same way on every run.
-- [ ] **T2.6.3** `library_component(text)`:
+- [x] **T2.6.1** `kobo_plain_name(title)`: must reproduce `golden/safe_filename.json` exactly.
+- [x] **T2.6.2** `disambiguate(name, author, volume_id)`: add the author, then an 8-character volume ID, the same way on every run. `assign_kobo_names(books)` applies it to every group of colliding names (compared without case), so only the set of books decides the names, never their order.
+- [x] **T2.6.3** `library_component(text, suffix="")`:
   - converts to NFC
   - replaces characters Windows rejects
-  - removes trailing dots and spaces
-  - avoids reserved names (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`, with any extension)
-  - caps each name at 100 characters without splitting a character
-- [ ] **T2.6.4** `render_template(template, record)` for `{author}`, `{title}`, `{year}`, `{series}`. A path that would exceed 260 characters on Windows is shortened, or rejected when long-path support is off.
+  - removes leading and trailing dots and spaces (a leading dot would hide the file on macOS and Linux)
+  - avoids reserved names (`CON`, `PRN`, `AUX`, `NUL`, `CONIN$`, `CONOUT$`, `COM1`–`COM9`, `LPT1`–`LPT9`, and `COM¹`–`COM³`, `LPT¹`–`LPT³`, with any extension)
+  - caps each name at 100 characters and 255 UTF-8 bytes (the per-name limit on Linux and macOS) without splitting a character
+- [x] **T2.6.4** `render_template(template, metadata, suffix, base, max_path)` for `{author}`, `{title}`, `{year}`, `{series}`. A path longer than `max_path` (259 characters on Windows when long-path support is off, from `windows_long_paths_enabled()`) is shortened, or rejected when it can't fit.
 - **Tests:**
   - golden parity
   - the same duplicate name on every run
