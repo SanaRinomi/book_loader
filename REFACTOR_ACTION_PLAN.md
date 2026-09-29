@@ -377,11 +377,12 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - a real subprocess holds a lock (both OSes; the POSIX run and stale-lock detection on POSIX are deferred, D8)
 
 ### T2.9 `infra/secrets.py` (S)
-- [ ] **T2.9.1** `resolve_secret(kind, file_opt, stdin_flag, env_var, legacy_value, prompter, interactive)`:
-  - applies the orders from REFACTOR_PLAN §9.9 and §10.7
+- [x] **T2.9.1** `resolve_secret(kind, env, file, use_stdin, legacy_value, prompter, interactive, stdin_taken_by)`:
+  - applies the orders from REFACTOR_PLAN §9.9 and §10.7. `kind` is the Adobe ID password, a new backup passphrase (asked twice; the hint mentions `--no-encrypt`), or the passphrase of an existing backup (asked once)
   - `--password` returns a warning to show
   - raises `SecretUnavailableError` with hints when nothing is available
-- [ ] **T2.9.2** A secret is never included in `repr` or exceptions: wrap it in a `Secret` type.
+  - `--password-stdin` / `--passphrase-stdin` read exactly one line, and refuse a terminal (no piped input), extra lines, and another option that also reads stdin
+- [x] **T2.9.2** A secret is never included in `repr` or exceptions: wrap it in a `Secret` type. It is also masked in f-strings, compares in constant time, and refuses to be pickled.
 - **Tests:**
   - every source order
   - `--password-stdin` combined with other input on stdin gives an error
