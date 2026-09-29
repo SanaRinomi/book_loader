@@ -40,16 +40,9 @@ class CalibreConverter:
             str(pdf_path),
         ]
 
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True)
 
         if result.returncode != 0:
             raise subprocess.CalledProcessError(
-                result.returncode,
-                cmd,
-                output=result.stdout,
-                stderr=result.stderr
+                result.returncode, cmd, output=result.stdout, stderr=result.stderr
             )

@@ -14,7 +14,9 @@ from ..utils.errors import ACSMFulfillmentError, ManualDownloadRequired
 # Called when the automatic download fails; returns the file the user downloaded
 # by hand, or None to give up. The second argument is the error of the previous
 # attempt with a hand-downloaded file (None on the first call).
-ManualDownloadHandler = Callable[[ManualDownloadRequired, Optional[ACSMFulfillmentError]], Optional[Path]]
+ManualDownloadHandler = Callable[
+    [ManualDownloadRequired, Optional[ACSMFulfillmentError]], Optional[Path]
+]
 
 AUTH_TYPE_NAMES = {"anonymous": "Anonymous", "AdobeID": "Adobe ID"}
 
@@ -75,7 +77,9 @@ class BookLoader:
         # 2. Fulfill ACSM, download encrypted file
         temp_dir = output_dir / ".temp"
         if downloaded_file:
-            encrypted_path = self._use_downloaded_file(acsm_path, downloaded_file, temp_dir, verbose, r)
+            encrypted_path = self._use_downloaded_file(
+                acsm_path, downloaded_file, temp_dir, verbose, r
+            )
         else:
             r.step(2, "Downloading Encrypted File")
             try:

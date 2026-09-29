@@ -3,10 +3,8 @@ Improved EPUB to PDF converter.
 """
 
 import tempfile
-import shutil
 from pathlib import Path
 from ebooklib import epub
-from io import BytesIO
 
 
 class ImprovedEpubToPdfConverter:
@@ -72,22 +70,19 @@ class ImprovedEpubToPdfConverter:
         creator = book.get_metadata("DC", "creator")
 
         # HTML beginning
-        content_parts.append(
-            """<!DOCTYPE html>
+        content_parts.append("""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-"""
-        )
+""")
 
         # Title page
         if title:
             content_parts.append(
-                f'<div class="title-page">'
-                f'<h1 class="book-title">{title[0][0]}</h1>'
+                f'<div class="title-page">' f'<h1 class="book-title">{title[0][0]}</h1>'
             )
             if creator:
                 content_parts.append(f'<p class="book-author">{creator[0][0]}</p>')
@@ -103,9 +98,7 @@ class ImprovedEpubToPdfConverter:
                     # Extract body content
                     cleaned = self._extract_body_content(content)
                     if cleaned.strip():
-                        content_parts.append(
-                            f'<div class="chapter" id="{item_id}">{cleaned}</div>'
-                        )
+                        content_parts.append(f'<div class="chapter" id="{item_id}">{cleaned}</div>')
                 except Exception as e:
                     print(f"Warning: Failed to extract {item_id}: {e}")
 
@@ -122,17 +115,13 @@ class ImprovedEpubToPdfConverter:
         html = re.sub(r"<!DOCTYPE[^>]*>", "", html)
 
         # Extract body content
-        body_match = re.search(
-            r"<body[^>]*>(.*?)</body>", html, re.DOTALL | re.IGNORECASE
-        )
+        body_match = re.search(r"<body[^>]*>(.*?)</body>", html, re.DOTALL | re.IGNORECASE)
         if body_match:
             return body_match.group(1)
 
         # If no body, remove html and head tags
         html = re.sub(r"</?html[^>]*>", "", html, flags=re.IGNORECASE)
-        html = re.sub(
-            r"<head[^>]*>.*?</head>", "", html, flags=re.DOTALL | re.IGNORECASE
-        )
+        html = re.sub(r"<head[^>]*>.*?</head>", "", html, flags=re.DOTALL | re.IGNORECASE)
 
         return html
 
@@ -141,8 +130,7 @@ class ImprovedEpubToPdfConverter:
         css_parts = []
 
         # Base styles
-        css_parts.append(
-            """
+        css_parts.append("""
 /* Base settings */
 @page {
     size: A4;
@@ -241,8 +229,7 @@ blockquote {
     border-left: 3px solid #ccc;
     font-style: italic;
 }
-"""
-        )
+""")
 
         # Extract CSS from EPUB
         for item in book.get_items():

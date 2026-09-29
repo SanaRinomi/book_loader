@@ -20,6 +20,7 @@ from .utils.errors import BookLoaderError, ManualDownloadRequired
 
 class ConflictAction(Enum):
     """File conflict resolution actions"""
+
     OVERWRITE = "overwrite"
     SKIP = "skip"
     OVERWRITE_ALL = "overwrite_all"
@@ -38,7 +39,7 @@ def _resolve_file_conflict(
     output_path: Path,
     book_title: str,
     batch_mode: bool = False,
-    remembered_choice: Optional[ConflictAction] = None
+    remembered_choice: Optional[ConflictAction] = None,
 ) -> ConflictAction:
     """
     Ask user how to handle an existing file.
@@ -66,6 +67,7 @@ def _resolve_file_conflict(
     if batch_mode:
         # Batch mode: provide "apply to all" options
         import questionary
+
         choice = questionary.select(
             f"How to handle '{book_title}'?",
             choices=[
@@ -129,6 +131,7 @@ def restore_auth(backup_file: Path, auth_dir: Path):
     # Remove existing auth directory if it exists
     if auth_dir.exists():
         import shutil
+
         shutil.rmtree(auth_dir)
 
     # Extract backup
@@ -180,7 +183,14 @@ def cli():
     help="Encrypted EPUB or PDF you downloaded yourself (e.g. in a browser after a blocked download)",
 )
 def process(
-    acsm_file, output, auth_dir, optimize, to_pdf, convert_engine, keep_encrypted, verbose,
+    acsm_file,
+    output,
+    auth_dir,
+    optimize,
+    to_pdf,
+    convert_engine,
+    keep_encrypted,
+    verbose,
     downloaded_file,
 ):
     """Process ACSM file and output DRM-free EPUB or PDF
@@ -321,7 +331,9 @@ class _ManualDownloadPrompt:
             books = [
                 p
                 for p in self.DOWNLOADS.iterdir()
-                if p.suffix.lower() in (".epub", ".pdf") and p.is_file() and p.stat().st_mtime >= self.since
+                if p.suffix.lower() in (".epub", ".pdf")
+                and p.is_file()
+                and p.stat().st_mtime >= self.since
             ]
         except OSError:
             return None
@@ -360,7 +372,8 @@ def create_auth(auth_type, email, password):
 
         if loader.account.is_authorized():
             click.secho(
-                "⚠ Authorization already exists, please run 'book-loader auth reset' first", fg="yellow"
+                "⚠ Authorization already exists, please run 'book-loader auth reset' first",
+                fg="yellow",
             )
             return
 
@@ -407,7 +420,7 @@ def auth_info():
                 "AdobeID": "Adobe ID",
             }.get(auth_type, auth_type)
 
-            click.secho(f"Authorization status: Authorized ✓", fg="green")
+            click.secho("Authorization status: Authorized ✓", fg="green")
             click.echo(f"Authorization type: {auth_type_display}")
 
             # Show Adobe ID email if applicable
@@ -416,7 +429,7 @@ def auth_info():
                 if email:
                     click.echo(f"Adobe ID: {email}")
         else:
-            click.secho(f"Authorization status: Not authorized", fg="yellow")
+            click.secho("Authorization status: Not authorized", fg="yellow")
             click.echo("\nHint: Run 'book-loader auth create' to create authorization")
 
     except Exception as e:
@@ -425,7 +438,9 @@ def auth_info():
 
 
 @auth.command("reset")
-@click.confirmation_option(prompt="Are you sure you want to reset authorization? This will delete all authorization files")
+@click.confirmation_option(
+    prompt="Are you sure you want to reset authorization? This will delete all authorization files"
+)
 def reset_auth():
     """Reset authorization (delete authorization files)
 
@@ -504,7 +519,7 @@ def backup_auth_cmd(output):
         click.echo(f"Backing up authorization to: {backup_path}")
         backup_auth(config.auth_dir, backup_path)
 
-        click.secho(f"\n✓ Backup created successfully!", fg="green", bold=True)
+        click.secho("\n✓ Backup created successfully!", fg="green", bold=True)
         click.echo(f"Backup file: {backup_path}")
         click.echo(f"File size: {backup_path.stat().st_size / 1024:.1f} KB")
 
@@ -568,7 +583,9 @@ def restore_auth_cmd(backup_file, backup_dir):
                 size_kb = backup.stat().st_size / 1024
                 mtime = datetime.fromtimestamp(backup.stat().st_mtime)
                 click.echo(f"  {i}. {backup.name}")
-                click.echo(f"     Size: {size_kb:.1f} KB  |  Modified: {mtime.strftime('%Y-%m-%d %H:%M:%S')}")
+                click.echo(
+                    f"     Size: {size_kb:.1f} KB  |  Modified: {mtime.strftime('%Y-%m-%d %H:%M:%S')}"
+                )
 
             # Let user select a backup
             choice = click.prompt(
@@ -581,7 +598,7 @@ def restore_auth_cmd(backup_file, backup_dir):
         click.echo(f"\nRestoring authorization from: {selected_backup}")
         restore_auth(selected_backup, config.auth_dir)
 
-        click.secho(f"\n✓ Authorization restored successfully!", fg="green", bold=True)
+        click.secho("\n✓ Authorization restored successfully!", fg="green", bold=True)
         click.echo(f"Authorization directory: {config.auth_dir}")
 
         # Display restored auth info
@@ -718,15 +735,12 @@ def kobo_list(ctx):
     type=click.Path(path_type=Path),
     help="Output directory (default: current directory)",
 )
+@click.option("--overwrite", is_flag=True, help="Overwrite existing files without asking")
 @click.option(
-    "--overwrite",
+    "--skip-existing",
+    "skip_existing",
     is_flag=True,
-    help="Overwrite existing files without asking"
-)
-@click.option(
-    "--skip-existing", "skip_existing",
-    is_flag=True,
-    help="Skip books that already exist in output directory"
+    help="Skip books that already exist in output directory",
 )
 @click.pass_context
 def kobo_dedrm(ctx, all_books, output, overwrite, skip_existing):
@@ -752,8 +766,11 @@ def kobo_dedrm(ctx, all_books, output, overwrite, skip_existing):
     try:
         # Validate mutually exclusive options
         if overwrite and skip_existing:
-            click.secho("✗ Error: --overwrite and --skip-existing cannot be used together",
-                        fg="red", err=True)
+            click.secho(
+                "✗ Error: --overwrite and --skip-existing cannot be used together",
+                fg="red",
+                err=True,
+            )
             sys.exit(1)
 
         from .core.kobo import KoboLibrary, KoboDecryptor
@@ -817,7 +834,9 @@ def kobo_dedrm(ctx, all_books, output, overwrite, skip_existing):
             click.echo(f"\nProcessing: {book.title}")
             try:
                 if not book.filename.exists():
-                    click.secho(f"  ✗ Book file not found (not downloaded?): {book.filename}", fg="red")
+                    click.secho(
+                        f"  ✗ Book file not found (not downloaded?): {book.filename}", fg="red"
+                    )
                     fail_count += 1
                     continue
 
@@ -830,7 +849,7 @@ def kobo_dedrm(ctx, all_books, output, overwrite, skip_existing):
                     output_path,
                     book.title,
                     batch_mode=batch_mode,
-                    remembered_choice=remembered_choice
+                    remembered_choice=remembered_choice,
                 )
 
                 # Update remembered choice
@@ -839,7 +858,7 @@ def kobo_dedrm(ctx, all_books, output, overwrite, skip_existing):
 
                 # Handle skip
                 if action in (ConflictAction.SKIP, ConflictAction.SKIP_ALL):
-                    click.secho(f"  ⊘ Skipped (file exists)", fg="yellow")
+                    click.secho("  ⊘ Skipped (file exists)", fg="yellow")
                     skip_count += 1
                     continue
 
@@ -856,7 +875,7 @@ def kobo_dedrm(ctx, all_books, output, overwrite, skip_existing):
 
         lib.close()
 
-        click.echo(f"\n--- Summary ---")
+        click.echo("\n--- Summary ---")
         click.secho(f"Success: {success_count}", fg="green" if success_count > 0 else "white")
         if skip_count > 0:
             click.secho(f"Skipped: {skip_count}", fg="yellow")
@@ -890,18 +909,19 @@ def info():
 
         if loader.account.is_authorized():
             auth_type = loader.account.get_auth_type()
-            click.secho(f"Authorization status: Authorized ✓", fg="green")
+            click.secho("Authorization status: Authorized ✓", fg="green")
             click.echo(f"Authorization type: {auth_type}")
         else:
-            click.secho(f"Authorization status: Not authorized", fg="yellow")
+            click.secho("Authorization status: Not authorized", fg="yellow")
 
         # Check if Calibre is available
         from .core.conversion.calibre_wrapper import CalibreConverter
+
         calibre = CalibreConverter()
         if calibre.is_available():
-            click.secho(f"Calibre: Available ✓", fg="green")
+            click.secho("Calibre: Available ✓", fg="green")
         else:
-            click.echo(f"Calibre: Not installed")
+            click.echo("Calibre: Not installed")
 
     except Exception as e:
         click.secho(f"✗ Error: {e}", fg="red", err=True)
