@@ -594,7 +594,11 @@ The per-book sidecar is the only record of the book; there is no central databas
 ```json
 {
   "version": 1,
-  "title": "…", "authors": ["…"], "language": "en",
+  "metadata": {
+    "title": "…", "authors": ["…"], "publisher": "…", "isbn": "9780306406157",
+    "language": "en", "year": 2024, "series": null,
+    "identifiers": [{ "scheme": "doi", "value": "…" }]
+  },
   "source": "adobe",
   "adobe": { "resource": "urn:uuid:…", "acsm_sha256": "…", "fulfilled_at": "…", "auth_fingerprint": "…" },
   "loan": null,
@@ -610,6 +614,7 @@ The per-book sidecar is the only record of the book; there is no central databas
 - **Duplicates:** the Adobe resource ID catches them. The same ACSM added twice is recognized, and a batch skips it.
 - **Speed:** if listing a big library gets slow, a cache index can be rebuilt from these files later.
 - **Unicode:** titles and names are stored in NFC.
+- **Metadata** comes from the OPF (or the Kobo database) and can be filled in or corrected later. Only the title is required. The ISBN is stored as bare digits after its check digit is verified; a source with an invalid ISBN keeps its other metadata and drops the ISBN. Identifiers other than the ISBN and the Adobe resource ID go in `identifiers`.
 
 ### 10.5 Commands
 ```

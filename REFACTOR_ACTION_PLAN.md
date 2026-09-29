@@ -292,7 +292,7 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - `BookFormat` (`epub`, `pdf`)
   - `ProcessRequest`, `ProcessResult`, `StepResult`
   - `BatchResult` with `exit_code`
-  - `BookRecord`, `PendingRecord`, `LoanRecord`
+  - `BookRecord` (holding a `BookMetadata`: title, authors, publisher, ISBN, language, year, series, other identifiers), `PendingRecord`, `LoanRecord`
 - [x] **T2.2.2** Create the typed events: `StepStarted`, `StepProgress(done, total)`, `StepNote`, `StepDone`, `StepFailed`, `Warning`, `ServerContact(kind, url)`, `Redirected(url)`, `Retrying(message)`. Add the `Reporter` protocol (`emit(event)`, plus `suspend()` returning a context manager).
 - [x] **T2.2.3** Create the `Prompter` protocol: `manual_download`, `resolve_conflict`, `select_books`, `select_many`, `confirm`, `choose`, `text`, `secret`.
 - **Tests:** model invariants (for example, `BatchResult.exit_code` is 0 only when nothing failed or is pending), and each event is immutable.
@@ -457,9 +457,9 @@ Goal: all Adobe-side code rebuilt on the new foundation, tested with fixtures an
 ### T3.1 `epub/inspect.py` (S)
 It comes first because T3.7 and Phase 11 use it.
 - [ ] **T3.1.1** `sniff(path)` returns `epub`, `pdf`, `html` or `unknown` from the first bytes: `PK`, `%PDF`, or `<!doctype html` / `<html` after trimming whitespace and a BOM.
-- [ ] **T3.1.2** `read_opf(epub)` returns the title, authors, language, identifiers and spine, via `container.xml`.
+- [ ] **T3.1.2** `read_opf(epub)` returns a `BookMetadata` (title, authors, publisher, ISBN through `normalize_isbn`, language, year, series, other identifiers) and the spine, via `container.xml`.
 - [ ] **T3.1.3** `is_adept_encrypted(path)`: an EPUB with `META-INF/rights.xml`, or a PDF with `/EBX_HANDLER`.
-- **Tests:** built EPUBs (normal, with a BOM, several identifiers, broken container), ADEPT EPUBs from T0.4.6, the tiny PDF from T0.4.7, and saved HTML check pages.
+- **Tests:** built EPUBs (normal, with a BOM, several identifiers, an ISBN in each common form, an invalid ISBN that is dropped, a publisher, broken container), ADEPT EPUBs from T0.4.6, the tiny PDF from T0.4.7, and saved HTML check pages.
 
 ### T3.2 `adobe/store.py`: AuthStore (M)
 - [ ] **T3.2.1** The file layout. `status()` returns an `AuthInfo` with the type, email, device UUID and key fingerprint, parsing `activation.xml` once and caching it. An `activation.dat`-only folder gives `ade_unusable`.

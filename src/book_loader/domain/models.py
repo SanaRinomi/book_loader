@@ -30,8 +30,10 @@ __all__ = [
     "BookFiles",
     "BookFormat",
     "BookLoan",
+    "BookMetadata",
     "BookRecord",
     "ConflictAction",
+    "Identifier",
     "ItemStatus",
     "LoanRecord",
     "OutputSettings",
@@ -40,6 +42,7 @@ __all__ = [
     "ProcessResult",
     "StepResult",
     "StepStatus",
+    "normalize_isbn",
 ]
 
 PENDING_ID = re.compile(r"[0-9a-f]{16}")
@@ -52,6 +55,31 @@ def _require_aware(name: str, value: datetime | None) -> None:
 
 def _nfc(text: str) -> str:
     return unicodedata.normalize("NFC", text)
+
+
+def _nfc_or_none(text: str | None) -> str | None:
+    return None if text is None else _nfc(text)
+
+
+ISBN_PREFIX = re.compile(r"^\s*(?:urn:isbn:|isbn(?:-1[03])?:?)\s*", re.IGNORECASE)
+
+
+def normalize_isbn(text: str) -> str | None:
+    """The ISBN in ``text`` as bare digits (and a final ``X`` for ISBN-10), or None.
+
+    Accepts the forms found in OPF files and shops: ``urn:isbn:`` and ``ISBN`` prefixes,
+    hyphens and spaces. Returns None when the check digit is wrong or the text isn't an
+    ISBN, so a reader can drop a bad value instead of failing.
+    """
+    digits = re.sub(r"[\s-]", "", ISBN_PREFIX.sub("", text)).upper()
+    if re.fullmatch(r"\d{9}[\dX]", digits):
+        values = [10 if c == "X" else int(c) for c in digits]
+        total = sum(weight * value for weight, value in zip(range(10, 0, -1), values))
+        return digits if total % 11 == 0 else None
+    if re.fullmatch(r"97[89]\d{10}", digits):
+        total = sum((3 if index % 2 else 1) * int(c) for index, c in enumerate(digits))
+        return digits if total % 10 == 0 else None
+    return None
 
 
 # --- Authorization ---------------------------------------------------------------------
@@ -290,27 +318,59 @@ class BookLoan:
 
 
 @dataclass(frozen=True)
-class BookRecord:
-    """One book in a library: the contents of its ``book.json`` (REFACTOR_PLAN §10.4)."""
+class Identifier:
+    """An identifier other than the ISBN, for example ("doi", "10.1000/182")."""
+
+    scheme: str
+    value: str
+
+
+@dataclass(frozen=True)
+class BookMetadata:
+    """What is known about a book: from its OPF, the Kobo database, or added later.
+
+    Only the title is required, so a field missing from the source can be filled in
+    later with ``dataclasses.replace``. Text is stored in NFC. ``isbn`` holds a valid
+    ISBN-10 or ISBN-13 as bare digits (see ``normalize_isbn``); other identifiers go in
+    ``identifiers``.
+    """
 
     title: str
-    source: str
-    added_at: datetime
-    updated_at: datetime
     authors: tuple[str, ...] = ()
+    publisher: str | None = None
+    isbn: str | None = None
     language: str | None = None
     year: int | None = None
     series: str | None = None
+    identifiers: tuple[Identifier, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "title", _nfc(self.title))
+        object.__setattr__(self, "authors", tuple(_nfc(author) for author in self.authors))
+        object.__setattr__(self, "publisher", _nfc_or_none(self.publisher))
+        object.__setattr__(self, "series", _nfc_or_none(self.series))
+        object.__setattr__(self, "identifiers", tuple(self.identifiers))
+        if self.isbn is not None:
+            isbn = normalize_isbn(self.isbn)
+            if isbn is None:
+                raise ValueError(f"not a valid ISBN: {self.isbn!r}")
+            object.__setattr__(self, "isbn", isbn)
+
+
+@dataclass(frozen=True)
+class BookRecord:
+    """One book in a library: the contents of its ``book.json`` (REFACTOR_PLAN §10.4)."""
+
+    metadata: BookMetadata
+    source: str
+    added_at: datetime
+    updated_at: datetime
     adobe: AdobeSource | None = None
     loan: BookLoan | None = None
     files: BookFiles = BookFiles()
     version: int = 1
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "title", _nfc(self.title))
-        object.__setattr__(self, "authors", tuple(_nfc(author) for author in self.authors))
-        if self.series is not None:
-            object.__setattr__(self, "series", _nfc(self.series))
         _require_aware("added_at", self.added_at)
         _require_aware("updated_at", self.updated_at)
         if self.updated_at < self.added_at:

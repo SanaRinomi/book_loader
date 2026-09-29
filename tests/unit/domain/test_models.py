@@ -19,8 +19,10 @@ from book_loader.domain.models import (
     BookFiles,
     BookFormat,
     BookLoan,
+    BookMetadata,
     BookRecord,
     ConflictAction,
+    Identifier,
     ItemStatus,
     LoanRecord,
     OutputSettings,
@@ -29,6 +31,7 @@ from book_loader.domain.models import (
     ProcessResult,
     StepResult,
     StepStatus,
+    normalize_isbn,
 )
 
 NOW = datetime(2026, 9, 29, 12, 0, tzinfo=UTC)
@@ -43,7 +46,7 @@ def adobe_source() -> AdobeSource:
 
 
 def book(**changes) -> BookRecord:
-    base = BookRecord("Book", "adobe", NOW, NOW, adobe=adobe_source())
+    base = BookRecord(BookMetadata("Book"), "adobe", NOW, NOW, adobe=adobe_source())
     return dataclasses.replace(base, **changes)
 
 
@@ -84,6 +87,8 @@ EXAMPLES = [
     BookFiles(),
     adobe_source(),
     BookLoan("loan-1", NOW),
+    Identifier("doi", "10.1000/182"),
+    BookMetadata("Book"),
     book(),
     pending(),
     loan(),
@@ -268,16 +273,104 @@ class TestBatch:
             BatchItem("A", ItemStatus.SKIPPED, pending_id="0123456789abcdef")
 
 
-class TestBookRecord:
+ISBN13 = "9780306406157"
+ISBN10 = "0306406152"
+
+
+class TestIsbn:
+    @pytest.mark.parametrize(
+        "text, expected",
+        [
+            (ISBN13, ISBN13),
+            ("978-0-306-40615-7", ISBN13),
+            ("urn:isbn:9780306406157", ISBN13),
+            ("ISBN 978 0 306 40615 7", ISBN13),
+            ("isbn:9780306406157", ISBN13),
+            ("ISBN-13: 979-10-90636-07-1", "9791090636071"),
+            (ISBN10, ISBN10),
+            ("ISBN 0-306-40615-2", ISBN10),
+            ("ISBN-10: 080442957X", "080442957X"),
+            ("080442957x", "080442957X"),
+        ],
+    )
+    def test_normalizes(self, text, expected):
+        assert normalize_isbn(text) == expected
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "9780306406158",  # wrong check digit
+            "0306406153",  # wrong check digit
+            "9770306406157",  # 977 is an ISSN prefix
+            "X306406152",  # X only as the last character
+            "12345",
+            "urn:uuid:0306406152",
+            "",
+        ],
+    )
+    def test_rejects(self, text):
+        assert normalize_isbn(text) is None
+
+
+class TestBookMetadata:
+    def test_only_the_title_is_required(self):
+        metadata = BookMetadata("Book")
+        assert metadata.authors == ()
+        assert metadata.publisher is None
+        assert metadata.isbn is None
+        assert metadata.identifiers == ()
+
+    def test_full(self):
+        metadata = BookMetadata(
+            "Book",
+            authors=("A. Author", "B. Author"),
+            publisher="Publisher",
+            isbn="978-0-306-40615-7",
+            language="en",
+            year=2024,
+            series="Series",
+            identifiers=(Identifier("doi", "10.1000/182"),),
+        )
+        assert metadata.isbn == ISBN13
+        assert metadata.identifiers == (Identifier("doi", "10.1000/182"),)
+
+    def test_invalid_isbn(self):
+        with pytest.raises(ValueError, match="not a valid ISBN"):
+            BookMetadata("Book", isbn="9780306406158")
+
     def test_text_is_stored_in_nfc(self):
-        record = book(title=DECOMPOSED, authors=(DECOMPOSED, "Plain"), series=DECOMPOSED)
-        assert record.title == COMPOSED
-        assert record.authors == (COMPOSED, "Plain")
-        assert record.series == COMPOSED
+        metadata = BookMetadata(
+            DECOMPOSED, authors=(DECOMPOSED, "Plain"), publisher=DECOMPOSED, series=DECOMPOSED
+        )
+        assert metadata.title == COMPOSED
+        assert metadata.authors == (COMPOSED, "Plain")
+        assert metadata.publisher == COMPOSED
+        assert metadata.series == COMPOSED
+
+    def test_sequences_become_tuples(self):
+        metadata = BookMetadata(
+            "Book", authors=["A", "B"], identifiers=[Identifier("asin", "B000")]  # type: ignore[arg-type]
+        )
+        assert metadata.authors == ("A", "B")
+        assert metadata.identifiers == (Identifier("asin", "B000"),)
+
+    def test_filled_in_later(self):
+        metadata = BookMetadata("Book", authors=("A",))
+        later = dataclasses.replace(metadata, publisher=DECOMPOSED, isbn="ISBN 0-306-40615-2")
+        assert later.publisher == COMPOSED
+        assert later.isbn == ISBN10
+        assert later.authors == ("A",)
+        with pytest.raises(ValueError, match="ISBN"):
+            dataclasses.replace(metadata, isbn="0306406153")
+
+
+class TestBookRecord:
+    def test_file_names_are_stored_in_nfc(self):
         assert BookFile(DECOMPOSED + ".epub", "ab" * 32).name == COMPOSED + ".epub"
 
-    def test_authors_become_a_tuple(self):
-        assert book(authors=["A", "B"]).authors == ("A", "B")
+    def test_holds_the_metadata(self):
+        metadata = BookMetadata("Book", publisher="Publisher", isbn=ISBN13)
+        assert book(metadata=metadata).metadata.isbn == ISBN13
 
     @pytest.mark.parametrize("name", ["added_at", "updated_at"])
     def test_dates_need_a_time_zone(self, name):
