@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Developer
 - Development tools (pytest, pytest-cov, black, ruff, pyright) moved from the `dev` extra to
   uv's `dev` dependency group. `uv sync` installs them; `pip install ".[dev]"` no longer works.
+- Vendored Adobe and DeDRM files are excluded from ruff and black. Project code was reformatted
+  with black and had unused imports and placeholder-free f-strings fixed by ruff; behaviour is
+  unchanged.
 
 ## [0.1.0]
 

@@ -77,7 +77,10 @@ Goal: pin today's behaviour in tests and set up tooling and a local check before
 - [x] **T0.1.3** Add `[tool.pytest.ini_options]` with the markers above, `addopts = -m "not network and not live"`, and `testpaths = ["tests"]`.
 - [x] **T0.1.4** Run `uv lock` and commit `uv.lock`.
 - [x] **T0.1.5** Create `CHANGELOG.md` with an "Unreleased" section.
+- [x] **T0.1.6** Added 2026-09-29. Exclude the vendored files from ruff and black in `pyproject.toml` (`force-exclude`, so they stay excluded when a file is passed directly), then run one formatting pass on project code only: `ruff check --fix` (safe fixes) and `black`. Vendored files are never formatted or linted.
 - **Tests:**
+  - `uv run ruff check src tests` and `uv run black --check src tests` pass, and no vendored file changed.
+  - `--help` output of every command is identical before and after the formatting pass.
   - `uv sync` works on a clean checkout.
   - `uv run book-loader --help` and `uv run python -m book_loader.cli --help` work.
   - On Python 3.10, `pip install .` is refused (checked by hand once).
@@ -186,6 +189,7 @@ Goal: vendored files move to their final home with only import changes, and are 
 - [ ] **T1.1.2** Move the files with `git mv`:
   - `core/adobe/{libadobe,libadobeAccount,libadobeFulfill,libpdf,customRSA}.py` → `adobe/_vendor/`
   - `core/drm/{ineptepub,ineptpdf,adobekey,utilities,argv_utils,zeroedzipinfo}.py` → `drm/_vendor/`
+  - in `pyproject.toml`, remove the old-path entries from the ruff and black exclusions (T0.1.6); the `_vendor` patterns already cover the new location
 - [ ] **T1.1.3** Check the vendored imports:
   - relative imports among the vendored files still work because the files move together
   - `from ...utils.redact import …` still reaches `book_loader.utils` from the new depth (`adobe/_vendor` is also two levels below `book_loader`)

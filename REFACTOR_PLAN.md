@@ -39,6 +39,7 @@ Decisions made while planning (2026-09-28):
 - **Keep plain-mode output names identical.** Without a library, EPUB and PDF output names must match what 0.1.0 produced byte for byte, so conflict checks and `--skip-existing` still recognise earlier output (§5.11).
 - **Vendored code gets no logic changes.**
   - `libadobe*`, `libpdf`, `customRSA`, `ineptepub`, `ineptpdf`, `adobekey`, `utilities`, `argv_utils` and `zeroedzipinfo` are only moved with `git mv`, with import paths updated.
+  - They are excluded from ruff and black, so no formatting pass or lint fix ever touches them (decided 2026-09-29).
   - These files are not pure upstream copies. `libadobe` has the redaction and `report()` hooks, and `libadobeFulfill` splits the download into parse, download and apply steps.
   - `_vendor/PATCHES.md` records, for each file, its upstream project and commit, and every local change. Future upstream updates can then be diffed and reapplied.
 - **Cover both EPUB and PDF.** Every ACSM code path and test handles both formats: EPUB licenses go in `META-INF/rights.xml`, PDF licenses go in `ADEPT_LICENSE` in the `EBX_HANDLER`.
