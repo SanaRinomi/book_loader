@@ -42,7 +42,7 @@ tests/
 │   ├── v0/                data written by 0.1.0: pending JSON, backup .tar.gz, link pages
 │   ├── os_output/         captured ifconfig / getmac / Get-NetAdapter / /sys output
 │   └── golden/            expected values: safe_filename table, key vectors, help option sets
-├── tools/                 dump_help.py (T0.3), make_fixtures.py (T0.4): regenerate golden, v0 and OS output files
+├── tools/                 check.py (T0.5.4): the local check; dump_help.py (T0.3), make_fixtures.py (T0.4): regenerate golden, v0 and OS output files
 ├── fakes/                 FakeFulfiller, FakeDecryptor, FakeConverter, FakePrompter, RecordingReporter, fake libadobe
 ├── unit/                  one folder per package (domain, infra, adobe, drm, kobo, epub, conversion, library)
 ├── integration/           services with fakes at the network edge
@@ -172,12 +172,13 @@ These tests pin what 0.1.0 does today. They live in `tests/characterization/`, e
 
 ### T0.5 Local check and continuous integration (S)
 No remote CI is available during the refactor (REFACTOR_PLAN §2.1). The local check in T0.5.4 is the gate for every task; the workflows are written now so they can be switched on later.
-- [ ] **T0.5.1** `.github/workflows/ci.yml`, written but not run until after the refactor (deferred D1):
+- [x] **T0.5.1** `.github/workflows/ci.yml`, written but not run until after the refactor (deferred D1):
   - runs on Windows, macOS and Linux, each with Python 3.11 and 3.14
   - steps: `uv sync`, ruff, `black --check`, then `pytest` with coverage
-- [ ] **T0.5.2** A separate manual workflow runs `-m network` with secrets, for later use. Written but not run (deferred D1).
-- [ ] **T0.5.3** Check whether `import book_loader.core.adobe.libadobe` works on Linux, because of the `oscrypto`/OpenSSL 3 risk (REFACTOR_PLAN §16). **Deferred (D3):** no Linux system is available, so record the result as "not checked".
-- [ ] **T0.5.4** A local check script, `uv run python tests/tools/check.py`. It runs `uv sync --locked`, ruff, `black --check`, pyright (from Phase 2) and `pytest` with coverage, first under Python 3.11 and then under 3.14, and stops at the first failure. The CI workflow in T0.5.1 runs the same script, so both stay in step.
+- [x] **T0.5.2** A separate manual workflow runs `-m network` with secrets, for later use. Written but not run (deferred D1).
+- [x] **T0.5.3** Check whether `import book_loader.core.adobe.libadobe` works on Linux, because of the `oscrypto`/OpenSSL 3 risk (REFACTOR_PLAN §16). **Deferred (D3):** no Linux system is available, so record the result as "not checked".
+  - Result, 2026-09-29: **not checked** (no Linux system). The T1.3 decision to replace `oscrypto` with a shim makes this check moot for the new code; D3 checks the shim on Linux instead.
+- [x] **T0.5.4** A local check script, `uv run python tests/tools/check.py`. It runs `uv sync --locked`, ruff, `black --check`, pyright (from Phase 2) and `pytest` with coverage, first under Python 3.11 and then under 3.14, and stops at the first failure. The CI workflow in T0.5.1 runs the same script, so both stay in step.
 - **Tests:** the local check passes on Windows under both Python versions. A deliberate ruff error makes it fail, and is then reverted.
 
 **Phase 0 exit:** the local check passes on Windows under Python 3.11 and 3.14, and the CI workflows are written but not run. The golden files (`redact`, `safe_filename`, `kobo_keys`, `help_options`) and the v0 fixtures are committed. The four strict-xfail tests (restore location, `--to-pdf` data loss, Kobo WAL, Kobo BOM) are present. All tests block network access except to this machine unless marked `network` or `live`.

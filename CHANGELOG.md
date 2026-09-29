@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Vendored Adobe and DeDRM files are excluded from ruff and black. Project code was reformatted
   with black and had unused imports and placeholder-free f-strings fixed by ruff; behaviour is
   unchanged.
+- A test suite (`uv run pytest`) and a local check (`uv run python tests/tools/check.py`) that
+  runs ruff, black, pytest and coverage under Python 3.11 and 3.14. GitHub workflows for
+  Windows, macOS and Linux are included but only start by hand for now.
 
 ## [0.1.0]
 
