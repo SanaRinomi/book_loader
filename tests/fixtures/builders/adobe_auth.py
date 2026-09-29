@@ -51,6 +51,7 @@ def activation_xml(key: RSA.RsaKey, method: str = "anonymous", email: str | None
     <adept:userInfoURL>https://auth.example.com/adept</adept:userInfoURL>
     <adept:activationURL>https://auth.example.com/adept</adept:activationURL>
     <adept:certificate>{_FAKE_CERT}</adept:certificate>
+    <adept:authenticationCertificate>{_FAKE_CERT}</adept:authenticationCertificate>
   </adept:activationServiceInfo>
   <activationToken xmlns="http://ns.adobe.com/adept">
     <device>{DEVICE_UUID}</device>

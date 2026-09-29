@@ -25,7 +25,6 @@ classifiers = [
 dependencies = [
     # Adobe ACSM core dependencies
     "lxml>=4.9.0",
-    "oscrypto>=1.3.0",
     "asn1crypto>=1.5.0",
     "pycryptodome>=3.18.0",
     "rsa>=4.9",
@@ -54,34 +53,15 @@ build-backend = "hatchling.build"
 line-length = 100
 target-version = ["py311"]
 # Vendored code stays byte-identical to upstream, so it is never reformatted
-# (REFACTOR_PLAN §2). Phase 1 moves it into the _vendor/ folders.
-force-exclude = '''
-/(
-    _vendor/
-  | core/adobe/(libadobe|libadobeAccount|libadobeFulfill|libpdf|customRSA)\.py
-  | core/drm/(ineptepub|ineptpdf|adobekey|utilities|argv_utils|zeroedzipinfo)\.py
-)
-'''
+# (REFACTOR_PLAN §2).
+force-exclude = '/_vendor/'
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-# Vendored code is not linted or fixed (REFACTOR_PLAN §2). Phase 1 moves it into _vendor/.
+# Vendored code is not linted or fixed (REFACTOR_PLAN §2).
 force-exclude = true
-extend-exclude = [
-    "**/_vendor/**",
-    "src/book_loader/core/adobe/libadobe.py",
-    "src/book_loader/core/adobe/libadobeAccount.py",
-    "src/book_loader/core/adobe/libadobeFulfill.py",
-    "src/book_loader/core/adobe/libpdf.py",
-    "src/book_loader/core/adobe/customRSA.py",
-    "src/book_loader/core/drm/ineptepub.py",
-    "src/book_loader/core/drm/ineptpdf.py",
-    "src/book_loader/core/drm/adobekey.py",
-    "src/book_loader/core/drm/utilities.py",
-    "src/book_loader/core/drm/argv_utils.py",
-    "src/book_loader/core/drm/zeroedzipinfo.py",
-]
+extend-exclude = ["**/_vendor/**"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -98,6 +78,8 @@ markers = [
 [dependency-groups]
 dev = [
     "black>=26.1.0",
+    "cryptography>=50.0.1",
+    "oscrypto>=1.3.0",
     "pyright>=1.1.414",
     "pytest>=9.0.2",
     "pytest-cov>=7.1.0",

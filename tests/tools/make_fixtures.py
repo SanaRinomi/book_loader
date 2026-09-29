@@ -9,6 +9,7 @@ Targets:
     kobo_keys       golden/kobo_keys.json       (T0.4.3)
     os_output       os_output/*_captured.txt    (T0.4.3; this OS only)
     v0              v0/ auth archives, pending record and link page (T0.4.4, T0.4.5)
+    pkcs12          pkcs12/*.p12 made by OpenSSL -legacy (T1.5; needs openssl and oscrypto)
 
 Golden values come from the 0.1.0 code and are the contract later phases must keep.
 An existing golden file is never changed unless ``--force`` is given, and only for a
@@ -301,7 +302,7 @@ def gen_v0() -> dict[str, bytes]:
     import time_machine
 
     from book_loader.cli import backup_auth
-    from book_loader.core.adobe import libadobe, libadobeFulfill
+    from book_loader.adobe._vendor import libadobe, libadobeFulfill
     from book_loader.core.adobe.fulfill import ACSMFulfiller
     from tests.fixtures.builders.adobe_auth import build_auth_folder
 
@@ -340,6 +341,64 @@ def gen_v0() -> dict[str, bytes]:
     return out
 
 
+# --------------------------------------------------------------------------- pkcs12
+
+PKCS12_LEGACY_SEED = "pkcs12-legacy"
+
+
+def gen_pkcs12() -> dict[str, bytes]:
+    """T1.5: PKCS#12 files as Adobe's servers write them (RC2-40 certificate bag, 3DES key
+    bag, SHA-1 MAC), made by OpenSSL, which ``cryptography`` can't write.
+
+    ``oscrypto_kdf_bug.p12`` is one that oscrypto 1.3.0 can't read: its pure-Python
+    PKCS#12 key derivation gets the 3DES key wrong for about one salt in 465.
+    """
+    import shutil
+
+    from cryptography.hazmat.primitives import serialization
+    from oscrypto import keys as oscrypto_keys
+
+    from tests.fixtures.builders.pkcs12 import LEGACY_PASSWORD, certificate, private_key
+
+    openssl = shutil.which("openssl")
+    if openssl is None:
+        raise SystemExit("pkcs12 needs the openssl command (Git Bash has one)")
+    key = private_key(PKCS12_LEGACY_SEED).private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    )
+    cert = certificate(PKCS12_LEGACY_SEED, "book-loader legacy test")
+    out: dict[str, bytes] = {}
+    with tempfile.TemporaryDirectory() as tmp_name:
+        tmp = Path(tmp_name)
+        (tmp / "key.pem").write_bytes(key)
+        (tmp / "cert.pem").write_bytes(cert.public_bytes(serialization.Encoding.PEM))
+
+        def export() -> bytes:
+            # -legacy: RC2-40 for the certificate, 3DES for the key, as OpenSSL 1.x did.
+            subprocess.run(
+                [openssl, "pkcs12", "-export", "-legacy", "-in", "cert.pem"]
+                + ["-inkey", "key.pem", "-name", "book-loader legacy test", "-out", "out.p12"]
+                + ["-passout", "pass:" + LEGACY_PASSWORD.decode("ascii")],
+                cwd=tmp,
+                check=True,
+            )
+            return (tmp / "out.p12").read_bytes()
+
+        out["pkcs12/legacy_rc2_40.p12"] = export()
+        for _ in range(20_000):
+            data = export()
+            try:
+                oscrypto_keys.parse_pkcs12(data, LEGACY_PASSWORD)
+            except (ValueError, OSError):  # on Windows, CNG rejects the padding: OSError
+                out["pkcs12/oscrypto_kdf_bug.p12"] = data
+                break
+        else:
+            raise SystemExit("no file oscrypto can't read after 20000 tries")
+    return out
+
+
 # --------------------------------------------------------------------------- common
 
 GENERATORS: dict[str, tuple[Callable[[], dict[str, bytes]], bool]] = {
@@ -349,6 +408,7 @@ GENERATORS: dict[str, tuple[Callable[[], dict[str, bytes]], bool]] = {
     "kobo_keys": (gen_kobo_keys, True),
     "os_output": (gen_os_output, False),
     "v0": (gen_v0, False),
+    "pkcs12": (gen_pkcs12, False),
 }
 
 

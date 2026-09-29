@@ -48,8 +48,8 @@ except ImportError:
 
 from .customRSA import CustomRSA
 
-from oscrypto import keys
-from oscrypto.asymmetric import dump_certificate, dump_private_key
+from ..pkcs12 import keys
+from ..pkcs12 import dump_certificate, dump_private_key
 
 
 VAR_ACS_SERVER_HTTP = "http://adeactivate.adobe.com/adept"

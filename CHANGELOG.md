@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Python 3.11 or newer is now required. Installing on Python 3.10 is refused.
 - The package description and keywords now mention Kobo.
+- `oscrypto` is no longer needed. book-loader reads the key and certificate in the Adobe
+  authorization with its own PKCS#12 reader, written in pure Python. This avoids
+  `oscrypto`'s "Error detecting the version of libcrypto" failure on some Linux systems with
+  OpenSSL 3. The new reader has been tested on Windows only so far.
+- When Adobe's reply to an Adobe ID sign-in can't be read, the error now says
+  "Invalid response to login request (please open a bug report)", as the Calibre plugin does.
+
+### Fixed
+- On Windows, about one Adobe authorization in 465 could not sign requests, failing with
+  "NTSTATUS error 0xC000003E". `oscrypto` derived the wrong key to decrypt the account's private
+  key; the new PKCS#12 reader derives it as the standard (RFC 7292) and OpenSSL do.
 
 ### Developer
 - Development tools (pytest, pytest-cov, black, ruff, pyright) moved from the `dev` extra to

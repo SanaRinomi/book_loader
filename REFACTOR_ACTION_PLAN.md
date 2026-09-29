@@ -189,23 +189,24 @@ No remote CI is available during the refactor (REFACTOR_PLAN §2.1). The local c
 Goal: vendored files move to their final home with only import changes, and are protected against accidental edits.
 
 ### T1.1 Create the target packages (S)
-- [ ] **T1.1.1** Create `src/book_loader/adobe/__init__.py`, `adobe/_vendor/__init__.py`, `drm/__init__.py` and `drm/_vendor/__init__.py`.
-- [ ] **T1.1.2** Move the files with `git mv`:
+- [x] **T1.1.1** Create `src/book_loader/adobe/__init__.py`, `adobe/_vendor/__init__.py`, `drm/__init__.py` and `drm/_vendor/__init__.py`.
+- [x] **T1.1.2** Move the files with `git mv`:
   - `core/adobe/{libadobe,libadobeAccount,libadobeFulfill,libpdf,customRSA}.py` → `adobe/_vendor/`
   - `core/drm/{ineptepub,ineptpdf,adobekey,utilities,argv_utils,zeroedzipinfo}.py` → `drm/_vendor/`
   - in `pyproject.toml`, remove the old-path entries from the ruff and black exclusions (T0.1.6); the `_vendor` patterns already cover the new location
-- [ ] **T1.1.3** Check the vendored imports:
+- [x] **T1.1.3** Check the vendored imports:
   - relative imports among the vendored files still work because the files move together
   - `from ...utils.redact import …` still reaches `book_loader.utils` from the new depth (`adobe/_vendor` is also two levels below `book_loader`)
   - fix anything that doesn't resolve
-- [ ] **T1.1.4** Update the old project code to import from the new paths: `core/adobe/account.py`, `fulfill.py`, `__init__.py`, and `core/drm/remover.py`. The old `core/adobe` and `core/drm` folders keep only project code.
+- [x] **T1.1.4** Update the old project code to import from the new paths: `core/adobe/account.py`, `fulfill.py`, `__init__.py`, and `core/drm/remover.py`. The old `core/adobe` and `core/drm` folders keep only project code.
 - **Tests:**
   - the whole Phase 0 suite passes unchanged
   - `git diff -M --stat` shows the vendored files as renames (at least 95% similar) with only import lines changed
 
 ### T1.2 PATCHES.md (M)
-- [ ] **T1.2.1** Find the upstream versions. Diff each file against acsm-calibre-plugin releases (for the five `adobe` files) and DeDRM/noDRM releases (for the six `drm` files), and choose the closest commit.
-- [ ] **T1.2.2** Write `adobe/_vendor/PATCHES.md` and `drm/_vendor/PATCHES.md`. For each file, record:
+- [x] **T1.2.1** Find the upstream versions. Diff each file against acsm-calibre-plugin releases (for the five `adobe` files) and DeDRM/noDRM releases (for the six `drm` files), and choose the closest commit.
+  - Result, 2026-09-29: no release tag matches either set, so both are pinned to commits: acsm-calibre-plugin `fb288af` and noDRM `7379b45`. Every file matches its pin exactly once the local changes are removed.
+- [x] **T1.2.2** Write `adobe/_vendor/PATCHES.md` and `drm/_vendor/PATCHES.md`. For each file, record:
   - the upstream repository and commit
   - its license
   - every local change: relative imports, the `report()` hook, redacted logging, the parse/download/apply split, `apply_license`, `_save_error_body`, the HTTP 429 handling
@@ -213,23 +214,32 @@ Goal: vendored files move to their final home with only import changes, and are 
 
 ### T1.3 oscrypto decision (S)
 Decided 2026-09-29: replace `oscrypto` with a shim (REFACTOR_PLAN decision 21, §16). T1.5 builds it.
-- [ ] **T1.3.1** Record the decision and the reason (the OpenSSL 3 bug on Linux, which can't be checked during the refactor) in `adobe/_vendor/PATCHES.md` and the README draft notes.
+- [x] **T1.3.1** Record the decision and the reason (the OpenSSL 3 bug on Linux, which can't be checked during the refactor) in `adobe/_vendor/PATCHES.md` and the README draft notes.
+  - Done 2026-09-29: `PATCHES.md` has a "Planned change" section, which T1.5 moves into the `libadobe.py` section. No README draft file exists, and the README describes the released version, so the README note is a sub-task of T6.7.2 instead.
 - **Tests:** none (documentation).
 
 ### T1.4 Vendor guard (S)
-- [ ] **T1.4.1** Write `tests/unit/test_vendor_manifest.py`. It hashes every file in both `_vendor/` folders and compares against `_vendor/MANIFEST.sha256`.
-- [ ] **T1.4.2** Add a script, `uv run python tests/tools/update_vendor_manifest.py`, to regenerate the manifest on purpose.
-- **Tests:** the guard passes. Changing one byte in a vendored file makes it fail.
+- [x] **T1.4.1** Write `tests/unit/test_vendor_manifest.py`. It hashes every file in both `_vendor/` folders and compares against `_vendor/MANIFEST.sha256`.
+  - normalize line endings before hashing: replace CRLF with LF. `core.autocrlf` is on for this repository, so Windows checkouts have CRLF and macOS and Linux checkouts have LF. Hashing the raw bytes would make the guard pass here and fail there (D1)
+  - the manifest itself lists files in sorted order, with `/` separators, so it is the same on every OS
+  - Done 2026-09-29, with these choices:
+    - there is one manifest per `_vendor/` folder
+    - it hashes every file there, including `__init__.py`, but not `PATCHES.md` (the notes, not code), the manifest itself, or `__pycache__`
+    - the format is `sha256sum`'s, and `.gitattributes` keeps the manifests LF. The hashes equal the LF blobs', so on an LF checkout `sha256sum -c --strict MANIFEST.sha256` passes too (checked against the committed blobs)
+- [x] **T1.4.2** Add a script, `uv run python tests/tools/update_vendor_manifest.py`, to regenerate the manifest on purpose. It hashes the same way as the test, using shared code.
+- **Tests:**
+  - the guard passes, and changing one byte in a vendored file makes it fail
+  - converting a vendored file between CRLF and LF line endings does not change its hash, so the guard still passes
 
 ### T1.5 PKCS#12 shim for oscrypto (M)
-- [ ] **T1.5.1** Write `adobe/pkcs12.py`, project code rather than vendored. It offers the three names `libadobe` uses, with the same arguments and return types as `oscrypto`:
+- [x] **T1.5.1** Write `adobe/pkcs12.py`, project code rather than vendored. It offers the three names `libadobe` uses, with the same arguments and return types as `oscrypto`:
   - `keys.parse_pkcs12(data, password)` returns `(private_key, certificate, extra_certificates)`
   - `dump_certificate(cert, encoding="der")` returns the certificate's DER bytes
   - `dump_private_key(key, None, "der")` returns an unencrypted PKCS#8 DER key, as `oscrypto` does
   - it parses with `asn1crypto`, derives keys and MAC keys with the RFC 7292 Appendix B algorithm on `hashlib`, and decrypts with `pycryptodome`: the PKCS#12 PBE schemes (SHA-1 with 3DES, and with RC2-40 and RC2-128) and PBES2 (PBKDF2 with AES-CBC)
   - it checks the MAC, and raises a clear error for a wrong password or an unsupported algorithm, naming the algorithm
-- [ ] **T1.5.2** In `adobe/_vendor/libadobe.py`, change only the two `oscrypto` import lines to import the same names from `..pkcs12`. This is the one vendored edit in this task: update `MANIFEST.sha256` and `PATCHES.md` in the same commit.
-- [ ] **T1.5.3** In `pyproject.toml`, move `oscrypto` from the dependencies to the dev group, where only the comparison tests use it. `asn1crypto` stays a core dependency. Add `cryptography` to the dev group for the test builder. Run `uv lock`, and add a changelog entry: `oscrypto` is no longer needed.
+- [x] **T1.5.2** In `adobe/_vendor/libadobe.py`, change only the two `oscrypto` import lines to import the same names from `..pkcs12`. This is the one vendored edit in this task: update `MANIFEST.sha256` and `PATCHES.md` in the same commit.
+- [x] **T1.5.3** In `pyproject.toml`, move `oscrypto` from the dependencies to the dev group, where only the comparison tests use it. `asn1crypto` stays a core dependency. Add `cryptography` to the dev group for the test builder. Run `uv lock`, and add a changelog entry: `oscrypto` is no longer needed.
 - **Tests:**
   - a builder, `fixtures/builders/pkcs12.py`, makes an RSA key, a certificate and PKCS#12 files with `cryptography`: 3DES for both bags, and PBES2 with AES-256. An RC2-40 certificate bag, the old OpenSSL default that Adobe servers may use, is generated once with `openssl pkcs12 -export -legacy` and committed under `fixtures/`
   - for each file, the shim's three results are byte-identical to `oscrypto`'s. These tests skip when `oscrypto` can't be imported
@@ -238,8 +248,31 @@ Decided 2026-09-29: replace `oscrypto` with a shim (REFACTOR_PLAN decision 21, �
   - `libadobe` imports and signs with `oscrypto` blocked (`sys.modules["oscrypto"] = None`)
   - `live`, local only: the real `activation.xml` on this machine gives identical results through the shim and `oscrypto`. Nothing from it is written to disk or committed
   - the Linux run is deferred (D3)
+- **Result, 2026-09-29.** Everything above is done. Findings, and how the tests differ from the plan:
+  - The real `activation.xml` uses a SHA-1 MAC with 100,000 iterations, a 3DES key bag and an RC2-40 certificate bag. Parsing it takes about 0.46 s with either the shim or `oscrypto`.
+  - **`oscrypto` bug on Windows.** There, `oscrypto` derives PKCS#12 keys in pure Python, and gets keys longer than one hash wrong when the first hash block starts with a zero byte. For a 3DES key that happens for about one salt in 465, measured over 20,000 salts. `oscrypto` then can't decrypt the key ("NTSTATUS error 0xC000003E"). The shim matches OpenSSL's `PKCS12KDF` (test vectors), so it also fixes this. It has a changelog "Fixed" entry.
+  - Because of that bug, "byte-identical to `oscrypto`" can't hold for every random salt. The tests compare with `cryptography` always, and compare with `oscrypto` on bundles it can read, rebuilding a bundle when it can't. `fixtures/pkcs12/oscrypto_kdf_bug.p12` is a committed file that `oscrypto` can't read and the shim can.
+  - **One deliberate difference from `oscrypto`:** a key from an unencrypted key bag comes back without the bag's `[0]` tag, so it dumps as PKCS#8. `oscrypto` returns the tagged bytes, which aren't PKCS#8. Adobe's key bags are always encrypted.
+  - The committed RC2-40 files are made by `uv run python -m tests.tools.make_fixtures pkcs12`, which needs the `openssl` command.
 
-**Phase 1 exit:** vendored code is in `_vendor/` and documented; the guard is active; `libadobe` no longer needs `oscrypto`; the CLI behaves the same.
+### T1.6 Finish the upstream fix `bccca40` (S)
+acsm-calibre-plugin `bccca40` (2026-06-24, "Fix error message for accounts not yet migrated to ByteBooks") changes `libadobeAccount.signIn()`. `d197e84` backported two of its three hunks (T1.2): the `E_ADEPT_RESET_PW_REQUIRED` message and `str(credentials)`. This task applies the rest, so that `signIn()` is identical to upstream. It needs the guard from T1.4.
+- [x] **T1.6.1** In `adobe/_vendor/libadobeAccount.py`, apply the rest of `bccca40` exactly as upstream has it. The bare `except` in `signIn()` returns "Invalid response to login request (please open a bug report)", and one of the two blank lines before that `except` goes. Also restore upstream's whitespace in the backported lines (`else: ` keeps its trailing space), so the diff against upstream shows only relative imports.
+- [x] **T1.6.2** Update `adobe/_vendor/PATCHES.md` in the same commit:
+  - `libadobeAccount.py` now has only relative imports as local changes
+  - all five files then match upstream `4eff3ee` (2026-09-23) or a newer head, so move the pin there. Check first that upstream has changed none of the five files since
+  - remove `bccca40` from the list of upstream changes that are not applied
+- [x] **T1.6.3** Regenerate `MANIFEST.sha256` with the T1.4.2 script in the same commit, and add a changelog entry: a clearer message when Adobe's sign-in reply can't be read, and for Adobe IDs that need a password reset after the ByteBooks migration.
+- **Tests:**
+  - `diff` of `libadobeAccount.py` against upstream at the new pin shows only the seven relative import lines. The reviewer runs the command in `PATCHES.md`
+  - characterization tests of `signIn()` error handling, with `buildSignInRequest` and `sendRequestDocu` replaced by fakes. The synthetic authorization folder (`fixtures/builders/adobe_auth.py`) gains an `authenticationCertificate` in `activationServiceInfo`, because `signIn()` reads it first:
+    - an `<error data="E_ADEPT_RESET_PW_REQUIRED ...">` reply gives `(False, "Server requires a password reset due to ByteBooks migration. ...")`
+    - a reply that isn't XML gives `(False, "Invalid response to login request (please open a bug report)")`
+    - the `CUS05051` and `LOGIN_FAILED` replies keep their messages, and an unknown error code gives "Unknown Adobe error:" followed by the reply
+  - the vendor guard passes with the new manifest
+- **Result, 2026-09-29.** `libadobeAccount.py` was rebuilt from upstream `4eff3ee` with the seven import lines made relative. Its diff against the old copy is exactly the missing parts of `bccca40`. Upstream changed none of the other four files after `fb288af`, so the pin moved to `4eff3ee`. The tests are in `tests/unit/adobe/test_libadobe_account_signin.py`, and only the new-message test fails on the old file. The changelog mentions only the new message: the ByteBooks message was already in 0.1.0 (`d197e84`).
+
+**Phase 1 exit:** vendored code is in `_vendor/` and documented; the guard is active; `libadobe` no longer needs `oscrypto`; `libadobeAccount` carries all of upstream `bccca40`; the CLI behaves the same.
 
 ---
 
@@ -750,6 +783,7 @@ Run and record in the PR, on Windows (including Git Bash). The same checks on ma
   - the fixes from REFACTOR_PLAN §6
   - a note that this release was tested on Windows only, and that macOS and Linux users may hit problems (REFACTOR_PLAN §2.1)
 - [ ] **T6.7.2** README and README.zh-TW sections for the changed behaviour (the full rewrite comes in Phase 12).
+  - a Linux note (T1.3): book-loader no longer needs `oscrypto`. The 0.1.0 failure on some Linux systems with OpenSSL 3 ("Error detecting the version of libcrypto") can't occur any more, because a pure-Python PKCS#12 reader replaces it. That reader is tested on Windows against `oscrypto`, and on Linux only once D3 is done
 - [ ] **T6.7.3** Bump the version and tag `v0.2.0`.
 - **Tests:** the local check passes on the tag, and the Windows part of T6.5 is complete.
 
