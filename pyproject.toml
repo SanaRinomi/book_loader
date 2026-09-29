@@ -1,24 +1,24 @@
 [project]
 name = "book-loader"
 version = "0.1.0"
-description = "Adobe ACSM ebook DRM removal tool - Supports anonymous and Adobe ID authorization"
+description = "DRM removal tool for Adobe ACSM (EPUB/PDF) and Kobo Desktop (KEPUB) ebooks"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = {text = "GPL-3.0-or-later"}
 authors = [
     {name = "spreered", email = "spreered@gmail.com"},
 ]
-keywords = ["ebook", "drm", "acsm", "adobe", "epub", "pdf", "drm-removal"]
+keywords = ["ebook", "drm", "acsm", "adobe", "kobo", "kepub", "epub", "pdf", "drm-removal"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Utilities",
     "Environment :: Console",
 ]
@@ -43,13 +43,6 @@ Homepage = "https://github.com/spreered/book_loader"
 Repository = "https://github.com/spreered/book_loader"
 Issues = "https://github.com/spreered/book_loader/issues"
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.4.0",
-    "black>=23.7.0",
-    "ruff>=0.0.285",
-]
-
 [project.scripts]
 book-loader = "book_loader.cli:cli"
 
@@ -59,8 +52,29 @@ build-backend = "hatchling.build"
 
 [tool.black]
 line-length = 100
-target-version = ["py310"]
+target-version = ["py311"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = '-m "not network and not live"'
+markers = [
+    "network: talks to real Adobe servers",
+    "live: needs a real install or a private file, such as Kobo Desktop or a real ADEPT PDF",
+    "weasyprint: needs WeasyPrint's native libraries",
+    "windows_only: runs only on Windows",
+    "macos_only: runs only on macOS",
+    "posix_only: runs only on macOS and Linux",
+]
+
+[dependency-groups]
+dev = [
+    "black>=26.1.0",
+    "pyright>=1.1.414",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.1",
+]
