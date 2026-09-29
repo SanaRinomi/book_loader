@@ -49,39 +49,15 @@ upstream counterpart of the download and license code added to `libadobeFulfill.
 - **Relative imports.** Calibre loads the plugin files as top-level modules, so upstream writes
   `from libadobe import ...`. Here they form a package, so these become
   `from .libadobe import ...`, including the imports inside functions.
-- **The only import that leaves `_vendor/`.** `libadobe.py` and `libadobeFulfill.py` import
-  `redact_url`, `redact_text` and `redact_header` from `...utils.redact`. The relative path
-  works because `adobe/_vendor/` is two package levels below `book_loader`, as `core/adobe/`
-  was. If `utils.redact` moves, only this import line changes.
+- **Imports that leave `_vendor/`.** Both are relative. They work because `adobe/_vendor/` is
+  two package levels below `book_loader`, as `core/adobe/` was. If a target moves, only its
+  import line changes.
+  - `libadobe.py` and `libadobeFulfill.py` import `redact_url`, `redact_text` and
+    `redact_header` from `...utils.redact`
+  - `libadobe.py` imports `keys`, `dump_certificate` and `dump_private_key` from `..pkcs12`,
+    in place of `oscrypto` (see [libadobe.py](#libadobepy))
 - **Whitespace.** Trailing spaces are removed on some lines next to local changes, for example
   `try: ` → `try:`. The diff shows these, but they change nothing.
-
-## Planned change: replace `oscrypto` with a shim
-
-Decided on 2026-09-29 (T1.3; REFACTOR_PLAN decision 21 and §16). T1.5 makes the change.
-When it lands, move this section into [libadobe.py](#libadobepy), and add `..pkcs12` to the
-imports that leave `_vendor/`.
-
-- **Why.** `libadobe.py` imports `oscrypto`, whose last release, 1.3.0 from March 2022, has a
-  known bug on some Linux systems: it fails to detect OpenSSL 3.x versions and raises "Error
-  detecting the version of libcrypto". `libadobe` imports `oscrypto.asymmetric` at module
-  level, so there every Adobe command could fail, including `auth create`. Windows and macOS
-  use their own crypto libraries and aren't affected.
-- **Why a shim rather than a workaround or a pinned `oscrypto` commit.** No Linux system is
-  available during the refactor (REFACTOR_PLAN §2.1), so whether the bug affects book-loader
-  can't be checked (T0.5.3 recorded "not checked"). A shim in pure Python loads no native
-  OpenSSL, so the bug can't occur, whatever the answer. It is checked on Linux after the
-  refactor (deferred item D3).
-- **What `libadobe` uses.** The following three names, only to read the PKCS#12 bundle in
-  `activation.xml`. Signing itself already uses `pycryptodome` through `customRSA`.
-  - `keys.parse_pkcs12(data, password)`, in `get_cert_from_pkcs12()` and `sign_node()`
-  - `dump_certificate(cert, encoding="der")`, in `get_cert_from_pkcs12()`
-  - `dump_private_key(key, None, "der")`, in `sign_node()`
-- **The vendored change.** Only the two import lines,
-  `from oscrypto import keys` and `from oscrypto.asymmetric import dump_certificate, dump_private_key`,
-  which will import the same names from `..pkcs12` (`book_loader/adobe/pkcs12.py`, project
-  code). `oscrypto` then moves to the dev dependencies, where tests check that the shim's
-  results are byte-identical to it.
 
 ## customRSA.py
 
@@ -106,6 +82,27 @@ Unchanged. Added in `d197e84`, which writes the license into downloaded PDFs; se
 
 - Relative import: `from .customRSA import CustomRSA`.
 - New imports: `time`, `http.client` and the redaction functions (see above).
+- **`oscrypto` replaced by a shim** (T1.5; decided in T1.3, REFACTOR_PLAN decision 21 and
+  §16). The two lines `from oscrypto import keys` and
+  `from oscrypto.asymmetric import dump_certificate, dump_private_key` now import the same
+  names from `..pkcs12` (`book_loader/adobe/pkcs12.py`, project code). Nothing else changed.
+  - Why: the last `oscrypto` release, 1.3.0 from March 2022, fails to detect OpenSSL 3.x on
+    some Linux systems and raises "Error detecting the version of libcrypto". `libadobe`
+    imported `oscrypto.asymmetric` at module level, so there every Adobe command could fail,
+    including `auth create`. No Linux system is available during the refactor (REFACTOR_PLAN
+    §2.1), so this couldn't be checked (T0.5.3: "not checked"). The shim loads no native
+    OpenSSL, so it can't happen, whatever the answer. The Linux check is deferred item D3.
+  - Also found while testing it: on Windows, `oscrypto` derives PKCS#12 keys with its own
+    pure-Python code, which gets a 3DES key wrong for about one salt in 465, and can then not
+    decrypt the account's private key. The shim follows RFC 7292 and matches OpenSSL.
+  - What `libadobe` uses, only to read the PKCS#12 bundle in `activation.xml` (signing itself
+    uses `pycryptodome` through `customRSA`): `keys.parse_pkcs12(data, password)` in
+    `get_cert_from_pkcs12()` and `sign_node()`, `dump_certificate(cert, encoding="der")` in
+    `get_cert_from_pkcs12()`, and `dump_private_key(key, None, "der")` in `sign_node()`.
+  - `oscrypto` is now a dev dependency only. `tests/unit/adobe/test_pkcs12.py` checks that the
+    shim's results are byte-identical to it, and a `live` test does the same for this
+    machine's real authorization.
+  - When updating from upstream, replace its two `oscrypto` import lines again.
 - `createDeviceKeyFile()`: after writing the device key, `os.chmod(FILE_DEVICEKEY, 0o600)`,
   so only the owner can read it (`ab502ae`). This includes a redundant local `import os`.
 - New section "Verbose logging" (`d197e84`): the global `VERBOSE`, `set_verbose()`,

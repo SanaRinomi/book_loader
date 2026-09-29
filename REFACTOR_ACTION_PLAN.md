@@ -232,14 +232,14 @@ Decided 2026-09-29: replace `oscrypto` with a shim (REFACTOR_PLAN decision 21, Â
   - converting a vendored file between CRLF and LF line endings does not change its hash, so the guard still passes
 
 ### T1.5 PKCS#12 shim for oscrypto (M)
-- [ ] **T1.5.1** Write `adobe/pkcs12.py`, project code rather than vendored. It offers the three names `libadobe` uses, with the same arguments and return types as `oscrypto`:
+- [x] **T1.5.1** Write `adobe/pkcs12.py`, project code rather than vendored. It offers the three names `libadobe` uses, with the same arguments and return types as `oscrypto`:
   - `keys.parse_pkcs12(data, password)` returns `(private_key, certificate, extra_certificates)`
   - `dump_certificate(cert, encoding="der")` returns the certificate's DER bytes
   - `dump_private_key(key, None, "der")` returns an unencrypted PKCS#8 DER key, as `oscrypto` does
   - it parses with `asn1crypto`, derives keys and MAC keys with the RFC 7292 Appendix B algorithm on `hashlib`, and decrypts with `pycryptodome`: the PKCS#12 PBE schemes (SHA-1 with 3DES, and with RC2-40 and RC2-128) and PBES2 (PBKDF2 with AES-CBC)
   - it checks the MAC, and raises a clear error for a wrong password or an unsupported algorithm, naming the algorithm
-- [ ] **T1.5.2** In `adobe/_vendor/libadobe.py`, change only the two `oscrypto` import lines to import the same names from `..pkcs12`. This is the one vendored edit in this task: update `MANIFEST.sha256` and `PATCHES.md` in the same commit.
-- [ ] **T1.5.3** In `pyproject.toml`, move `oscrypto` from the dependencies to the dev group, where only the comparison tests use it. `asn1crypto` stays a core dependency. Add `cryptography` to the dev group for the test builder. Run `uv lock`, and add a changelog entry: `oscrypto` is no longer needed.
+- [x] **T1.5.2** In `adobe/_vendor/libadobe.py`, change only the two `oscrypto` import lines to import the same names from `..pkcs12`. This is the one vendored edit in this task: update `MANIFEST.sha256` and `PATCHES.md` in the same commit.
+- [x] **T1.5.3** In `pyproject.toml`, move `oscrypto` from the dependencies to the dev group, where only the comparison tests use it. `asn1crypto` stays a core dependency. Add `cryptography` to the dev group for the test builder. Run `uv lock`, and add a changelog entry: `oscrypto` is no longer needed.
 - **Tests:**
   - a builder, `fixtures/builders/pkcs12.py`, makes an RSA key, a certificate and PKCS#12 files with `cryptography`: 3DES for both bags, and PBES2 with AES-256. An RC2-40 certificate bag, the old OpenSSL default that Adobe servers may use, is generated once with `openssl pkcs12 -export -legacy` and committed under `fixtures/`
   - for each file, the shim's three results are byte-identical to `oscrypto`'s. These tests skip when `oscrypto` can't be imported
@@ -248,6 +248,12 @@ Decided 2026-09-29: replace `oscrypto` with a shim (REFACTOR_PLAN decision 21, Â
   - `libadobe` imports and signs with `oscrypto` blocked (`sys.modules["oscrypto"] = None`)
   - `live`, local only: the real `activation.xml` on this machine gives identical results through the shim and `oscrypto`. Nothing from it is written to disk or committed
   - the Linux run is deferred (D3)
+- **Result, 2026-09-29.** Everything above is done. Findings, and how the tests differ from the plan:
+  - The real `activation.xml` uses a SHA-1 MAC with 100,000 iterations, a 3DES key bag and an RC2-40 certificate bag. Parsing it takes about 0.46 s with either the shim or `oscrypto`.
+  - **`oscrypto` bug on Windows.** There, `oscrypto` derives PKCS#12 keys in pure Python, and gets keys longer than one hash wrong when the first hash block starts with a zero byte. For a 3DES key that happens for about one salt in 465, measured over 20,000 salts. `oscrypto` then can't decrypt the key ("NTSTATUS error 0xC000003E"). The shim matches OpenSSL's `PKCS12KDF` (test vectors), so it also fixes this. It has a changelog "Fixed" entry.
+  - Because of that bug, "byte-identical to `oscrypto`" can't hold for every random salt. The tests compare with `cryptography` always, and compare with `oscrypto` on bundles it can read, rebuilding a bundle when it can't. `fixtures/pkcs12/oscrypto_kdf_bug.p12` is a committed file that `oscrypto` can't read and the shim can.
+  - **One deliberate difference from `oscrypto`:** a key from an unencrypted key bag comes back without the bag's `[0]` tag, so it dumps as PKCS#8. `oscrypto` returns the tagged bytes, which aren't PKCS#8. Adobe's key bags are always encrypted.
+  - The committed RC2-40 files are made by `uv run python -m tests.tools.make_fixtures pkcs12`, which needs the `openssl` command.
 
 ### T1.6 Finish the upstream fix `bccca40` (S)
 acsm-calibre-plugin `bccca40` (2026-06-24, "Fix error message for accounts not yet migrated to ByteBooks") changes `libadobeAccount.signIn()`. `d197e84` backported two of its three hunks (T1.2): the `E_ADEPT_RESET_PW_REQUIRED` message and `str(credentials)`. This task applies the rest, so that `signIn()` is identical to upstream. It needs the guard from T1.4.

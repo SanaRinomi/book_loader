@@ -995,6 +995,7 @@ One PR each. Every phase leaves the CLI working and the tests passing.
     - The only vendored change is the two `oscrypto` import lines in `libadobe`, recorded in `PATCHES.md`.
     - While `oscrypto` still works on Windows, tests check that the shim gives byte-identical results to it.
     - No Linux system is available (§2.1), so the shim on Linux is checked afterwards (§18).
+    - Found in T1.5 (2026-09-29): Windows is affected by a different `oscrypto` bug. Its pure-Python PKCS#12 key derivation gets the 3DES key wrong for about one salt in 465, so about one Adobe authorization in 465 can't sign requests. The shim derives keys as OpenSSL does, which fixes this too.
 - **Windows file locks.** A PDF open in a reader, or antivirus scanning a new file, blocks replacing or deleting it. `fs.py` retries briefly, then reports which file is locked. Workspace cleanup never fails the run over a locked temp file; it warns and leaves the file.
 - **macOS and Linux are untested during the refactor (§2.1).** Kobo support works only on macOS today, and nothing confirms it still works there until §18 is done. File permissions, POSIX locks, terminal handling and the Linux Downloads lookup are also untested. The fakes reduce this risk, but real systems can differ from the fakes in ways nobody anticipated.
 - **Kobo on Windows is only partly tested.** The key derivation and decryption are tested offline, but the folder layout and MAC reading need a real Kobo Desktop install on Windows (§9.1).
