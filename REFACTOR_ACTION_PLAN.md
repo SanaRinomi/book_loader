@@ -280,9 +280,9 @@ acsm-calibre-plugin `bccca40` (2026-06-24, "Fix error message for accounts not y
 Goal: build the foundation pieces, each fully unit-tested. The old code doesn't use them yet, except redact (T2.12).
 
 ### T2.1 `domain/errors.py` (S)
-- [ ] **T2.1.1** Create `BookLoaderError(message, hint=None, step=None)` and the subclasses from `utils/errors.py`: `AuthorizationError`, `ACSMFulfillmentError`, `ManualDownloadRequired(reason, url, link_file, acsm_path, pending_id)`, `DRMRemovalError`, `KoboLibraryNotFoundError`, `KoboDecryptionError`. Add `ConversionError` with `CalibreNotFoundError`, `WeasyPrintUnavailableError` and `ConversionFailedError`, plus `ConfigError`, `LockedError`, `SecretUnavailableError`, `ArchiveError` and `LibraryError`.
-- [ ] **T2.1.2** Drop `WorkflowError`, which is never raised.
-- [ ] **T2.1.3** `ManualDownloadRequired`'s message mentions `--downloaded-file` and `pending resume <id>`.
+- [x] **T2.1.1** Create `BookLoaderError(message, hint=None, step=None)` and the subclasses from `utils/errors.py`: `AuthorizationError`, `ACSMFulfillmentError`, `ManualDownloadRequired(reason, url, link_file, acsm_path, pending_id)`, `DRMRemovalError`, `KoboLibraryNotFoundError`, `KoboDecryptionError`. Add `ConversionError` with `CalibreNotFoundError`, `WeasyPrintUnavailableError` and `ConversionFailedError`, plus `ConfigError`, `LockedError`, `SecretUnavailableError`, `ArchiveError` and `LibraryError`.
+- [x] **T2.1.2** Drop `WorkflowError`, which is never raised.
+- [x] **T2.1.3** `ManualDownloadRequired`'s message mentions `--downloaded-file` and `pending resume <id>`.
 - **Tests:** every error builds a message and a hint; `ManualDownloadRequired`'s message holds both finishing instructions and the link page path, and never the URL.
 
 ### T2.2 `domain/models.py`, `events.py`, `prompts.py` (M)
