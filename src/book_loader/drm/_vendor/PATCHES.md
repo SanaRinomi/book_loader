@@ -5,6 +5,11 @@ file records where they come from and every local change, so an upstream update 
 and the changes reapplied. Update it, and `MANIFEST.sha256`, in the same commit as any change
 to a vendored file.
 
+`tests/unit/test_vendor_manifest.py` fails when a file here no longer matches
+`MANIFEST.sha256`. After an intended change, run
+`uv run python tests/tools/update_vendor_manifest.py`. The hashes ignore CRLF line endings,
+and this file is not hashed.
+
 ## Upstream
 
 | | |

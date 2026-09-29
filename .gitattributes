@@ -3,3 +3,7 @@ tests/fixtures/golden/** -text
 tests/fixtures/os_output/** -text
 tests/fixtures/replies/** -text
 tests/fixtures/v0/** -text
+
+# The vendor manifests (T1.4) are LF everywhere, so `sha256sum -c` works on them. The
+# vendored files themselves follow core.autocrlf; their hashes ignore CRLF.
+src/book_loader/*/_vendor/MANIFEST.sha256 text eol=lf

@@ -219,10 +219,14 @@ Decided 2026-09-29: replace `oscrypto` with a shim (REFACTOR_PLAN decision 21, Â
 - **Tests:** none (documentation).
 
 ### T1.4 Vendor guard (S)
-- [ ] **T1.4.1** Write `tests/unit/test_vendor_manifest.py`. It hashes every file in both `_vendor/` folders and compares against `_vendor/MANIFEST.sha256`.
+- [x] **T1.4.1** Write `tests/unit/test_vendor_manifest.py`. It hashes every file in both `_vendor/` folders and compares against `_vendor/MANIFEST.sha256`.
   - normalize line endings before hashing: replace CRLF with LF. `core.autocrlf` is on for this repository, so Windows checkouts have CRLF and macOS and Linux checkouts have LF. Hashing the raw bytes would make the guard pass here and fail there (D1)
   - the manifest itself lists files in sorted order, with `/` separators, so it is the same on every OS
-- [ ] **T1.4.2** Add a script, `uv run python tests/tools/update_vendor_manifest.py`, to regenerate the manifest on purpose. It hashes the same way as the test, using shared code.
+  - Done 2026-09-29, with these choices:
+    - there is one manifest per `_vendor/` folder
+    - it hashes every file there, including `__init__.py`, but not `PATCHES.md` (the notes, not code), the manifest itself, or `__pycache__`
+    - the format is `sha256sum`'s, and `.gitattributes` keeps the manifests LF. The hashes equal the LF blobs', so on an LF checkout `sha256sum -c --strict MANIFEST.sha256` passes too (checked against the committed blobs)
+- [x] **T1.4.2** Add a script, `uv run python tests/tools/update_vendor_manifest.py`, to regenerate the manifest on purpose. It hashes the same way as the test, using shared code.
 - **Tests:**
   - the guard passes, and changing one byte in a vendored file makes it fail
   - converting a vendored file between CRLF and LF line endings does not change its hash, so the guard still passes

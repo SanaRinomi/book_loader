@@ -65,6 +65,7 @@ REFACTOR_ACTION_PLAN.md).
    - EPUB: `ineptepub.py` (AES-CBC decryption)
    - PDF: `ineptpdf.py` (RSA + AES decryption)
    - These and their helpers live in `drm/_vendor/`, vendored from DeDRM/noDRM; same rule
+   - Each `_vendor/` has `PATCHES.md` (upstream commit, every local change) and `MANIFEST.sha256`, checked by `tests/unit/test_vendor_manifest.py`. Change a vendored file only when the task says so; then update `PATCHES.md` and run `uv run python tests/tools/update_vendor_manifest.py` in the same commit
 
 4. **Conversion** (`core/conversion/`): Optional EPUB → PDF conversion
    - Two engines: `python` (weasyprint) or `calibre` (external)
