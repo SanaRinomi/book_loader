@@ -1,5 +1,6 @@
-# T0.5.2. Tests marked `network`, which talk to real Adobe servers. Manual only, and
-# NOT run during the refactor (REFACTOR_PLAN §2.1, deferred item D1).
+# T0.5.2. Tests marked `network`, which talk to real Adobe servers. Manual only
+# (workflow_dispatch). Once the first network test exists, add the secrets below in the
+# fork's settings and run it once (T0.6.5, item D1).
 #
 # Secrets use the BL_TEST_ prefix, not BOOK_LOADER_: the test suite clears every
 # BOOK_LOADER_* variable so a developer's settings can't leak into tests.
@@ -8,13 +9,17 @@ name: Network tests
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   network:
-    # Windows is the only platform verified during the refactor.
+    # The OS the manual checks (T6.5) use; one account, so one job.
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
       - run: uv sync --locked --python 3.14
       # Exits with code 5 ("no tests collected") until the first network test exists.
       - run: uv run --no-sync pytest -m network -v
