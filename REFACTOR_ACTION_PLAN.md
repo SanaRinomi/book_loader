@@ -208,15 +208,34 @@ Goal: vendored files move to their final home with only import changes, and are 
 - **Tests:** none (documentation). The reviewer checks one file's diff against upstream using the notes.
 
 ### T1.3 oscrypto decision (S)
-- [ ] **T1.3.1** T0.5.3 can't run during the refactor, so pick one of the options in REFACTOR_PLAN §16 from the upstream bug report alone. Record it in `PATCHES.md` and the README draft notes, marked as not yet checked on Linux.
-- **Tests:** if a workaround is chosen, write a Linux-only CI step that imports `libadobe` and signs a test node with a generated key. It can't run until after the refactor (deferred D3). The same test also runs in the local check on Windows.
+Decided 2026-09-29: replace `oscrypto` with a shim (REFACTOR_PLAN decision 21, §16). T1.5 builds it.
+- [ ] **T1.3.1** Record the decision and the reason (the OpenSSL 3 bug on Linux, which can't be checked during the refactor) in `adobe/_vendor/PATCHES.md` and the README draft notes.
+- **Tests:** none (documentation).
 
 ### T1.4 Vendor guard (S)
 - [ ] **T1.4.1** Write `tests/unit/test_vendor_manifest.py`. It hashes every file in both `_vendor/` folders and compares against `_vendor/MANIFEST.sha256`.
 - [ ] **T1.4.2** Add a script, `uv run python tests/tools/update_vendor_manifest.py`, to regenerate the manifest on purpose.
 - **Tests:** the guard passes. Changing one byte in a vendored file makes it fail.
 
-**Phase 1 exit:** vendored code is in `_vendor/` and documented; the guard is active; the CLI behaves the same.
+### T1.5 PKCS#12 shim for oscrypto (M)
+- [ ] **T1.5.1** Write `adobe/pkcs12.py`, project code rather than vendored. It offers the three names `libadobe` uses, with the same arguments and return types as `oscrypto`:
+  - `keys.parse_pkcs12(data, password)` returns `(private_key, certificate, extra_certificates)`
+  - `dump_certificate(cert, encoding="der")` returns the certificate's DER bytes
+  - `dump_private_key(key, None, "der")` returns an unencrypted PKCS#8 DER key, as `oscrypto` does
+  - it parses with `asn1crypto`, derives keys and MAC keys with the RFC 7292 Appendix B algorithm on `hashlib`, and decrypts with `pycryptodome`: the PKCS#12 PBE schemes (SHA-1 with 3DES, and with RC2-40 and RC2-128) and PBES2 (PBKDF2 with AES-CBC)
+  - it checks the MAC, and raises a clear error for a wrong password or an unsupported algorithm, naming the algorithm
+- [ ] **T1.5.2** In `adobe/_vendor/libadobe.py`, change only the two `oscrypto` import lines to import the same names from `..pkcs12`. This is the one vendored edit in this task: update `MANIFEST.sha256` and `PATCHES.md` in the same commit.
+- [ ] **T1.5.3** In `pyproject.toml`, move `oscrypto` from the dependencies to the dev group, where only the comparison tests use it. `asn1crypto` stays a core dependency. Add `cryptography` to the dev group for the test builder. Run `uv lock`, and add a changelog entry: `oscrypto` is no longer needed.
+- **Tests:**
+  - a builder, `fixtures/builders/pkcs12.py`, makes an RSA key, a certificate and PKCS#12 files with `cryptography`: 3DES for both bags, and PBES2 with AES-256. An RC2-40 certificate bag, the old OpenSSL default that Adobe servers may use, is generated once with `openssl pkcs12 -export -legacy` and committed under `fixtures/`
+  - for each file, the shim's three results are byte-identical to `oscrypto`'s. These tests skip when `oscrypto` can't be imported
+  - a wrong password, a changed MAC, and an unsupported algorithm each raise the expected error
+  - `sign_node` on a synthetic activation and device key gives the same signature through the shim as through `oscrypto`, and the signature verifies with the certificate's public key
+  - `libadobe` imports and signs with `oscrypto` blocked (`sys.modules["oscrypto"] = None`)
+  - `live`, local only: the real `activation.xml` on this machine gives identical results through the shim and `oscrypto`. Nothing from it is written to disk or committed
+  - the Linux run is deferred (D3)
+
+**Phase 1 exit:** vendored code is in `_vendor/` and documented; the guard is active; `libadobe` no longer needs `oscrypto`; the CLI behaves the same.
 
 ---
 
@@ -711,7 +730,7 @@ Run and record in the PR, on Windows (including Git Bash). The same checks on ma
 ### T6.6 Switch over and delete the old code (M)
 - [ ] **T6.6.1** Delete `core/`, `utils/`, the old `cli.py`, `main.py`, the re-export shims and `tests/characterization/`. Everything they pinned must be ported by now: check against the list in T0.4.
 - [ ] **T6.6.2** Check that the `pyproject` entry point `book_loader.cli:cli` resolves to the package.
-- [ ] **T6.6.3** Drop `rsa`, `Pillow` and `asn1crypto`; add `rich`, `rich-click` and `prompt_toolkit`. Run `uv lock`.
+- [ ] **T6.6.3** Drop `rsa` and `Pillow`; add `rich`, `rich-click` and `prompt_toolkit`. Run `uv lock`. `asn1crypto` stays for the PKCS#12 shim, and `oscrypto` already left the core dependencies in T1.5.
 - [ ] **T6.6.4** Remove the pyright exclusions for the deleted folders.
 - **Tests:** the whole suite and the parity test pass; `pip install .` in a clean virtual environment gives a working `book-loader`, and `python -m book_loader` works too.
 
@@ -988,6 +1007,7 @@ P0 ─► P1 ─► P2 ─┬─► P3 (T3.1 before T3.7) ─┐
 | Kobo key vectors | T0.4.3 | every phase |
 | Redaction golden values | T0.4.1 | every phase |
 | Vendor manifest | T1.4 | every phase |
+| PKCS#12 shim matches `oscrypto` | T1.5 | every phase, while `oscrypto` is in the dev group |
 
 ---
 
@@ -996,7 +1016,7 @@ Everything here needs macOS, Linux or a remote CI pipeline, and none is availabl
 
 - [ ] **D1 CI.** From T0.5.1, T0.5.2 and T2.14. Switch on `ci.yml` and run the whole suite on Windows, macOS and Linux with Python 3.11 and 3.14. Run the manual network workflow once. *Possible fixes:* any behaviour the fakes didn't model, path separators, line endings, encodings, and temp-folder handling.
 - [ ] **D2 Fixtures and platform-only tests.** From T0.2 and every `macos_only`/`posix_only` test. Run the fixture smoke tests and all skipped platform tests for the first time. *Possible fixes:* `HOME` handling in `tmp_home`, and platform tests that never ran and may be wrong themselves.
-- [ ] **D3 `oscrypto` on Linux.** From T0.5.3 and T1.3. Import `libadobe` on a current Linux distribution with OpenSSL 3, sign a test node, and run `auth create --anonymous`. Enable the Linux CI step. *Possible fixes:* the T1.3 choice may have to change, for example from a documented workaround to a shim.
+- [ ] **D3 PKCS#12 shim on Linux.** From T0.5.3, T1.3 and T1.5. On a current Linux distribution with OpenSSL 3 and without `oscrypto` installed, import `libadobe`, sign a test node, and run `auth create --anonymous` and `process` with a real ACSM. *Possible fixes:* the shim is pure Python, so problems are unlikely; any that appear are in the shim's algorithm support. Once this passes, decide whether to drop `oscrypto` from the dev group and retire the comparison tests.
 - [ ] **D4 File permissions.** From T0.4.5, T2.7.3, T2.11, T3.4.3, T3.5, T5.2, T9.2.1 and T11.2.2. On macOS and Linux, check that private folders are `0700` and that key-holding files (pending records, loans, backups) are `0600`, including files created before the folder existed. *Possible fixes:* the umask, missing `chmod` calls, and modes lost by atomic writes.
 - [ ] **D5 Paths and known folders.** From T2.4 and T2.13. Check `~/.config/book-loader/` and `.adobe/` on macOS and Linux, with `BOOK_LOADER_AUTH_DIR` and `--auth-dir`. Check the Downloads lookup on a Linux desktop with `XDG_DOWNLOAD_DIR`, on a Linux server without it, and on macOS. *Possible fixes:* `user-dirs.dirs` quoting and `$HOME` expansion.
 - [ ] **D6 MAC address parsers.** From T0.4.3 and T4.2.2. Capture real `ifconfig -a` output on macOS and `/sys/class/net/*/address` on Linux. Replace the hand-written fixtures and rerun the parser tests. *Possible fixes:* the parsers, for unexpected adapter types, bridges, and virtual interfaces.

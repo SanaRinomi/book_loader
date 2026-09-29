@@ -32,6 +32,7 @@ Decisions made while planning (2026-09-28):
 | 18 | Backup selection | **Named presets plus a `custom` choice** for advanced backups. Scripts must name a preset or list parts (§10.7) |
 | 19 | Future plans | `auth import-ade` and `auth export-key` are planned for later; `auth upgrade` is dropped (§9.12) |
 | 20 | Test platforms during the refactor (2026-09-29) | **Windows only, checked locally.** No macOS, Linux or remote CI is available until the refactor is done. Behaviour on those systems is covered by fakes where possible and verified afterwards (§2.1, §18) |
+| 21 | `oscrypto` (2026-09-29) | **Replace it with a small shim** in `adobe/pkcs12.py`, written in pure Python on `asn1crypto` and `pycryptodome`. `oscrypto` leaves the dependencies, which removes its OpenSSL 3 bug on Linux (§16) |
 
 ## 2. Guardrails
 
@@ -162,6 +163,7 @@ src/book_loader/
 │   ├── loans.py             LoanStore: <auth>/loans.json
 │   ├── identity.py          checks a downloaded file belongs to a pending book (§9.4)
 │   ├── backup.py            auth-only archives on top of infra/archive (+ reads original .tar.gz)
+│   ├── pkcs12.py            oscrypto replacement: the three calls libadobe makes, in pure Python (§16)
 │   └── _vendor/             libadobe, libadobeAccount, libadobeFulfill, libpdf, customRSA, PATCHES.md   (git mv only)
 ├── drm/
 │   ├── adept.py             AdeptDecryptor: dispatch by format; result codes 0 / 1 / other
@@ -221,7 +223,7 @@ src/book_loader/
 **Dependencies (`pyproject.toml`):**
 - **Add** `rich`, `rich-click`, and `prompt_toolkit`. `prompt_toolkit` is used directly by the watched-downloads prompt, so it's declared rather than relied on through questionary.
 - **Add** the optional extra `images = ["Pillow"]`.
-- **Drop** `rsa`, `Pillow` from the core dependencies, and `asn1crypto`, which only `oscrypto` uses.
+- **Drop** `rsa` and `Pillow` from the core dependencies, and `oscrypto`, which the PKCS#12 shim replaces (§16). `asn1crypto` stays, because the shim uses it directly.
 - **Metadata:** the description and keywords should mention Kobo.
 - **Dev tooling:** move the dev tools into uv's `[dependency-groups] dev` (pytest is already there under `optional-dependencies`), and add `pyright` or `mypy`.
 - **Lock file:** regenerate `uv.lock`.
@@ -987,7 +989,12 @@ One PR each. Every phase leaves the CLI working and the tests passing.
   - document a workaround
   - pin a fixed upstream commit in development installs
   - later, replace the few `oscrypto` calls through a small shim documented in `PATCHES.md`
-  - Decide in Phase 1. Because no Linux system is available (§2.1), the decision is made from the upstream bug report alone and recorded as unverified. It is checked on Linux afterwards (§18).
+  - **Decided 2026-09-29: the shim.**
+    - `libadobe` uses only three `oscrypto` functions, all to read the PKCS#12 bundle in `activation.xml`: `keys.parse_pkcs12`, `dump_certificate(cert, encoding="der")` and `dump_private_key(key, None, "der")`. Signing itself already uses `pycryptodome` through `customRSA`.
+    - `adobe/pkcs12.py` provides those three names with the same arguments and results. It parses the ASN.1 with `asn1crypto`, derives keys with the PKCS#12 algorithm from RFC 7292 using `hashlib`, and decrypts with `pycryptodome`. No native OpenSSL is loaded, so the Linux bug can't occur.
+    - The only vendored change is the two `oscrypto` import lines in `libadobe`, recorded in `PATCHES.md`.
+    - While `oscrypto` still works on Windows, tests check that the shim gives byte-identical results to it.
+    - No Linux system is available (§2.1), so the shim on Linux is checked afterwards (§18).
 - **Windows file locks.** A PDF open in a reader, or antivirus scanning a new file, blocks replacing or deleting it. `fs.py` retries briefly, then reports which file is locked. Workspace cleanup never fails the run over a locked temp file; it warns and leaves the file.
 - **macOS and Linux are untested during the refactor (§2.1).** Kobo support works only on macOS today, and nothing confirms it still works there until §18 is done. File permissions, POSIX locks, terminal handling and the Linux Downloads lookup are also untested. The fakes reduce this risk, but real systems can differ from the fakes in ways nobody anticipated.
 - **Kobo on Windows is only partly tested.** The key derivation and decryption are tested offline, but the folder layout and MAC reading need a real Kobo Desktop install on Windows (§9.1).
@@ -1022,7 +1029,7 @@ These checks need macOS, Linux or a remote CI pipeline, none of which is availab
 |---|---|---|
 | CI | Switch on the workflow; the whole suite passes on Windows, macOS and Linux with Python 3.11 and the newest release; the manual network workflow runs | D1 |
 | Test fixtures | The shared fixtures and every `posix_only` and `macos_only` test pass on real systems | D2 |
-| `oscrypto` on Linux | `libadobe` imports and signs on current Linux distributions; the Phase 1 decision holds | D3 |
+| PKCS#12 shim on Linux | `libadobe` imports and signs through the shim on current Linux distributions, with no `oscrypto` installed | D3 |
 | File permissions | Private folders are `0700` and key-holding files `0600` on macOS and Linux | D4 |
 | Paths and known folders | `~/.config/book-loader/` on macOS and Linux; the Downloads folder on a real Linux desktop and on macOS | D5 |
 | MAC addresses | The `ifconfig` and `/sys` parsers work on real output, not only on the hand-written fixtures | D6 |
