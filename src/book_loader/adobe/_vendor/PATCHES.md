@@ -83,9 +83,11 @@ Unchanged. Added in `d197e84`, which writes the license into downloaded PDFs; se
   - Why: the last `oscrypto` release, 1.3.0 from March 2022, fails to detect OpenSSL 3.x on
     some Linux systems and raises "Error detecting the version of libcrypto". `libadobe`
     imported `oscrypto.asymmetric` at module level, so there every Adobe command could fail,
-    including `auth create`. No Linux system is available during the refactor (REFACTOR_PLAN
-    §2.1), so this couldn't be checked (T0.5.3: "not checked"). The shim loads no native
-    OpenSSL, so it can't happen, whatever the answer. The Linux check is deferred item D3.
+    including `auth create`. No Linux system was available when this was written
+    (T0.5.3: "not checked"). The shim loads no native OpenSSL, so it can't happen, whatever
+    the answer. Since T0.6 the Ubuntu CI runner (OpenSSL 3) confirms both: `oscrypto` 1.3.0
+    fails there with that error, and `libadobe` signs through the shim. A real Adobe account
+    on Linux is deferred item D3 (REFACTOR_PLAN §18).
   - Also found while testing it: on Windows, `oscrypto` derives PKCS#12 keys with its own
     pure-Python code, which gets a 3DES key wrong for about one salt in 465, and can then not
     decrypt the account's private key. The shim follows RFC 7292 and matches OpenSSL.

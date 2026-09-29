@@ -1,6 +1,6 @@
 """T2.8: ``infra/locks.py``, lock files for auth folders and libraries.
 
-The real-subprocess tests run on every OS; their first POSIX run is deferred (D8).
+The real-subprocess tests run on every OS: macOS and Linux on the CI runners (D8).
 """
 
 from __future__ import annotations

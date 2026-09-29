@@ -1,8 +1,8 @@
 """T2.7: ``infra/fs.py``: atomic writes, unique names, private folders, locked files,
 the workspace and safe moves.
 
-``posix_only`` tests (file modes) are written but skip on Windows; their first run is
-deferred (D4, D8).
+``posix_only`` tests (file modes, a real cross-file-system move) skip on Windows and run
+on the macOS and Linux CI runners (D4, D8).
 """
 
 from __future__ import annotations

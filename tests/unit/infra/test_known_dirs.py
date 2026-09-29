@@ -1,7 +1,8 @@
 """T2.4 / T2.13: ``infra/known_dirs.py``, Windows known folders and the Downloads folder.
 
 The OS and environment come in through a ``Host``, so the Linux and macOS lookups are
-tested here with fakes. A real Linux desktop and macOS are deferred (D5).
+tested here with fakes. CI runs them for real on macOS and on a Linux server without
+``user-dirs.dirs``; a real Linux desktop is deferred (D5).
 """
 
 from __future__ import annotations
