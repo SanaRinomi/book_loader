@@ -15,7 +15,14 @@ from book_loader.adobe import pkcs12 as shim
 from book_loader.adobe._vendor import libadobe
 from tests.fixtures.builders._random import rsa_key
 from tests.fixtures.builders.adobe_auth import build_auth_folder
-from tests.fixtures.builders.pkcs12 import build_pkcs12, device_password, reference, with_pkcs12
+from tests.fixtures.builders.pkcs12 import (
+    build_pkcs12,
+    device_password,
+    oscrypto,
+    oscrypto_or_skip,
+    reference,
+    with_pkcs12,
+)
 
 ACCOUNT_SEED = "pkcs12-account"
 # Module globals that libadobe keeps between calls.
@@ -32,12 +39,11 @@ def request_node() -> etree._Element:
 
 
 def oscrypto_reads(data: bytes, password: bytes) -> bool:
-    try:
-        from oscrypto import keys
-    except ImportError:
+    modules = oscrypto()
+    if modules is None:
         return True  # nothing to compare with
     try:
-        keys.parse_pkcs12(data, password)
+        modules[0].parse_pkcs12(data, password)
     except (ValueError, OSError):  # its 3DES key derivation bug (about one salt in 465)
         return False
     return True
@@ -85,8 +91,7 @@ def test_signature_verifies_with_the_certificate_key(account: Path):
 
 
 def test_signature_matches_oscrypto(account: Path, monkeypatch: pytest.MonkeyPatch):
-    keys = pytest.importorskip("oscrypto.keys")
-    asymmetric = pytest.importorskip("oscrypto.asymmetric")
+    keys, asymmetric = oscrypto_or_skip()
     through_shim = libadobe.sign_node(request_node())
     monkeypatch.setattr(libadobe, "keys", keys)
     monkeypatch.setattr(libadobe, "dump_private_key", asymmetric.dump_private_key)
@@ -97,8 +102,7 @@ def test_certificate_matches_cryptography_and_oscrypto(account: Path):
     data, password = pkcs12_of(account), device_password(account)
     cert = libadobe.get_cert_from_pkcs12(data, password)
     assert cert == reference(data, password).certificate
-    keys = pytest.importorskip("oscrypto.keys")
-    asymmetric = pytest.importorskip("oscrypto.asymmetric")
+    keys, asymmetric = oscrypto_or_skip()
     _, oscrypto_cert, _ = keys.parse_pkcs12(data, password)
     assert cert == asymmetric.dump_certificate(oscrypto_cert, encoding="der")
 

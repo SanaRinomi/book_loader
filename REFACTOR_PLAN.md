@@ -3,6 +3,8 @@
 > Status: **planning only, no code changed yet.** Written 2026-09-28 against commit `3f70d22`, and revised the same day after a review against [ORIGINAL_STRUCTURE.md](ORIGINAL_STRUCTURE.md). That file describes the code this plan starts from. References like "§6" point within this file. The step-by-step tasks and tests for carrying it out are in [REFACTOR_ACTION_PLAN.md](REFACTOR_ACTION_PLAN.md).
 >
 > Revised 2026-09-29: the refactor is carried out on Windows only, with no remote CI. §2.1 describes these working constraints, and §18 lists what must be checked, and possibly fixed, on macOS and Linux once the refactor is done.
+>
+> Revised again 2026-09-29: work now happens in the fork [SanaRinomi/book_loader](https://github.com/SanaRinomi/book_loader), where GitHub Actions is available. Its hosted runners give Windows, macOS and Linux for automated checks during the refactor. There is still no macOS or Linux machine to use by hand. §2.1 now describes both, and §18 splits the other-OS checks into those that run on the runners now and those that still wait for a real machine.
 
 ## 1. Goal and decisions
 
@@ -31,7 +33,7 @@ Decisions made while planning (2026-09-28):
 | 17 | Logs | **Always keep redacted logs.** The current run writes `latest-book-loader.log`; older logs are kept for 30 days (§9.11) |
 | 18 | Backup selection | **Named presets plus a `custom` choice** for advanced backups. Scripts must name a preset or list parts (§10.7) |
 | 19 | Future plans | `auth import-ade` and `auth export-key` are planned for later; `auth upgrade` is dropped (§9.12) |
-| 20 | Test platforms during the refactor (2026-09-29) | **Windows only, checked locally.** No macOS, Linux or remote CI is available until the refactor is done. Behaviour on those systems is covered by fakes where possible and verified afterwards (§2.1, §18) |
+| 20 | Test platforms during the refactor (2026-09-29, revised the same day) | **Windows locally, plus GitHub Actions on the fork.** The local check on Windows stays the gate for each task. CI runs the same check on hosted Windows, macOS and Linux runners for every push and PR. Checks that need a person at a real macOS or Linux machine, a real install or a real account wait until afterwards (§2.1, §18). The first answer, Windows only with no CI, was replaced when the fork's Actions became available |
 | 21 | `oscrypto` (2026-09-29) | **Replace it with a small shim** in `adobe/pkcs12.py`, written in pure Python on `asn1crypto` and `pycryptodome`. `oscrypto` leaves the dependencies, which removes its OpenSSL 3 bug on Linux (§16) |
 
 ## 2. Guardrails
@@ -50,18 +52,31 @@ Decisions made while planning (2026-09-28):
 
 ### 2.1 Working constraints during the refactor
 
-Recorded 2026-09-29. These hold until the refactor is complete.
+Recorded 2026-09-29, and revised the same day when GitHub Actions became available. These hold until the refactor is complete.
 
-- **Only Windows is available.** There is no macOS, Linux or other POSIX machine, including virtual machines and WSL.
-- **No remote pipelines.** GitHub Actions and comparable hosted CI can't be used.
+- **The only machine to work on is a Windows 11 PC.** There is no macOS, Linux or other POSIX machine to use by hand, including virtual machines and WSL.
+- **GitHub Actions runs in the fork.** Work is pushed to [SanaRinomi/book_loader](https://github.com/SanaRinomi/book_loader), a public fork of `spreered/book_loader`, and PRs target its `main`. Actions is enabled there. Standard GitHub-hosted runners are free for public repositories:
+  - `windows-latest`: Windows Server, x64
+  - `ubuntu-latest`: Ubuntu, x64, with OpenSSL 3
+  - `macos-latest`: macOS on Apple silicon (arm64)
+  - Exact image versions change over time. The [runner-images](https://github.com/actions/runner-images) README lists them.
+
+What the runners can and can't do:
+- **They can** run the whole automated suite on each OS, including `posix_only` and `macos_only` tests. They can also install packages (`apt`, `brew`, `choco`), for example WeasyPrint's native libraries or Calibre, and capture real command output such as `ifconfig -a` or `/sys/class/net`. Jobs can pass files to each other as workflow artifacts, so an archive made on macOS can be restored on Windows.
+- **They can't** stand in for a person at a real machine:
+  - every job starts from a fresh VM with no terminal (TTY), no desktop session and only virtual network adapters
+  - there's no Kobo Desktop install or signed-in Kobo account
+  - there are no real ACSM files; they are private and can each be fulfilled only once
+  - a Linux desktop's `user-dirs.dirs` isn't set up
+  - the Windows runner is Windows Server, not a desktop Windows edition, so the Windows 11 PC stays the reference for Windows desktop behaviour
 
 What this changes:
-- **A local check replaces CI as the gate.** It runs ruff, black `--check`, the type checker and pytest on Windows, under both Python 3.11 and the newest release. Every task must pass it.
-- **The CI workflow is still written,** so it can be switched on later, but it isn't run during the refactor.
-- **Code for other OSes is tested through fakes.** OS-specific code takes the platform, environment and command output as inputs, so tests for macOS and Linux behaviour run on Windows. Examples are fake environments for paths, and saved `ifconfig` and `/sys` output for MAC parsing.
-- **Some tests can't run at all.** Tests marked `posix_only` or `macos_only` are still written but always skip. On Windows, `chmod` only toggles the read-only flag, so file-mode checks such as `0600` and `0700` can't be tested there even with fakes.
-- **Results for macOS and Linux are unverified.** Nothing in this refactor may claim they work there. Releases made before §18 is done say in the changelog that only Windows was tested.
-- **Deferred checks are collected in §18.** They may turn up bugs that need fixing once the platforms are available.
+- **The local check stays the gate for each task.** It runs ruff, black `--check`, the type checker and pytest on Windows, under both Python 3.11 and the newest release. Every task must pass it before it is pushed.
+- **CI is the gate for each PR.** The CI workflow runs the same check script on all three runners with both Python versions, on every push to `main` and every PR. A PR merges only when every job passes.
+- **Code for other OSes is still written to be testable through fakes.** OS-specific code takes the platform, environment and command output as inputs, so its macOS and Linux behaviour is tested on Windows too. Examples are fake environments for paths, and saved `ifconfig` and `/sys` output for MAC parsing. CI then checks the same code against the real OS, so a fake that doesn't match reality shows up as a CI failure.
+- **Platform-only tests run on CI.** Tests marked `posix_only` or `macos_only` skip locally and run on the macOS and Linux runners. File-mode checks such as `0600` and `0700` run there too; on Windows, `chmod` only toggles the read-only flag.
+- **Results for macOS and Linux are limited to what CI covers.** The refactor may claim that the automated tests pass on the macOS and Linux runners, and nothing more. Releases made before §18 is done say in the changelog that macOS and Linux were tested only on CI runners, and name what that doesn't cover.
+- **Checks that need a real machine are collected in §18.** They may turn up bugs that need fixing once such a machine is available.
 
 ## 3. What's wrong today
 
@@ -918,7 +933,9 @@ book-loader migrate --cleanup       delete old data that has been migrated and v
 - **Live tests** (Adobe servers, a real Kobo install) are marked `@pytest.mark.network` / `@pytest.mark.live` and skipped by default.
 - **Phase 0 realism:** the current code has few places to swap in fakes, so Phase 0 tests work at the level of the CLI and public functions, with `monkeypatch` (for example on `_get_mac_addrs`). That way they survive the rewrite.
 - **CI:** GitHub Actions on Windows, macOS and Linux with Python 3.11 and the newest release, running ruff, black `--check`, the type checker and pytest. Paths, MAC addresses, permissions, known folders and console handling differ per OS, so all three are needed.
-  - **During the refactor (§2.1):** the same checks run locally on Windows only, under both Python versions. The workflow file is written but not run. Running it on macOS and Linux is the first item in §18.
+  - **During the refactor (§2.1):** the workflow runs on the fork's hosted runners for every push to `main` and every PR. The same checks also run locally on Windows under both Python versions before each push.
+  - **Extra CI jobs** cover what the main matrix can't: WeasyPrint and Calibre installed on each runner, capturing real OS output for the MAC fixtures, and a cross-OS backup round trip passed between jobs as an artifact.
+  - **The network workflow** stays manual (`workflow_dispatch`), with its Adobe ID secrets stored in the fork's settings.
 - `TESTING.md` is replaced by the test suite and a short README section.
 
 ## 14. Feature parity checklist
@@ -969,7 +986,7 @@ One PR each. Every phase leaves the CLI working and the tests passing.
 
 | Phase | Content |
 |---|---|
-| 0 | **Safety net:** the §13 tests that can run against the current code, the `--help` snapshot, and a local check on Windows with Python 3.11 and the newest release. A CI workflow for three OSes is written but not run until after the refactor (§2.1). Raise `requires-python` to 3.11, update the classifiers, black/ruff targets and dependency groups (§4.1). No other production changes |
+| 0 | **Safety net:** the §13 tests that can run against the current code, the `--help` snapshot, and a local check on Windows with Python 3.11 and the newest release. A CI workflow for three OSes runs the same check on the fork's hosted runners (§2.1; switched on in T0.6, after Phase 2). Raise `requires-python` to 3.11, update the classifiers, black/ruff targets and dependency groups (§4.1). No other production changes |
 | 1 | **Move the vendored files** to `adobe/_vendor/` and `drm/_vendor/` with `git mv`, changing only import paths, and write `PATCHES.md` for each |
 | 2 | **`domain/` and `infra/`:** errors with hints, models, the `Reporter` and `Prompter` interfaces, `paths` (`%LOCALAPPDATA%` on Windows, with the old folder as a fallback), `names`, `locks`, `secrets`, `logging` (log files, rotation, 30-day cleanup), `Settings` without side effects, `Workspace` (with `preserve`), `RetentionPolicy`, `ConflictPolicy`, and `archive` (manifest, encryption, safe extraction) |
 | 3 | **Adobe adapters:** `AuthStore`, `AdeptSession`, `PendingStore` (v1 plus v0 reader), `LoanStore`, `Fulfiller`, `identity`, `backup` on top of `infra/archive` (restore fixes, original archives) |
@@ -987,7 +1004,7 @@ One PR each. Every phase leaves the CLI working and the tests passing.
 - **0.2.0** = phases 0–6: the same features in the new structure, with the §6 fixes, plus logs, `--json` and masked password input. The one-release notices (§7, §11.2) start here.
 - **0.3.0** = phases 7–8: pending, watched downloads, batch, loans, optimize.
 - **0.4.0** = phases 9–12: libraries, `library watch`, backups, migrations, docs.
-- **Platform caveat (§2.1):** releases made before the §18 checks are done are tested on Windows only. Their changelog says so, and macOS and Linux users are told to expect possible problems.
+- **Platform caveat (§2.1):** releases made before the §18 checks are done are tested by hand on Windows only, with the automated tests also passing on macOS and Linux CI runners. Their changelog says so, and names what hasn't been checked on a real macOS or Linux machine, such as Kobo on macOS and interactive prompts.
 
 ## 16. Risks
 
@@ -1000,10 +1017,11 @@ One PR each. Every phase leaves the CLI working and the tests passing.
     - `adobe/pkcs12.py` provides those three names with the same arguments and results. It parses the ASN.1 with `asn1crypto`, derives keys with the PKCS#12 algorithm from RFC 7292 using `hashlib`, and decrypts with `pycryptodome`. No native OpenSSL is loaded, so the Linux bug can't occur.
     - The only vendored change is the two `oscrypto` import lines in `libadobe`, recorded in `PATCHES.md`.
     - While `oscrypto` still works on Windows, tests check that the shim gives byte-identical results to it.
-    - No Linux system is available (§2.1), so the shim on Linux is checked afterwards (§18).
+    - The shim's tests run on the Ubuntu runner, which has OpenSSL 3 (§2.1). A real ACSM processed on Linux is checked afterwards (§18).
     - Found in T1.5 (2026-09-29): Windows is affected by a different `oscrypto` bug. Its pure-Python PKCS#12 key derivation gets the 3DES key wrong for about one salt in 465, so about one Adobe authorization in 465 can't sign requests. The shim derives keys as OpenSSL does, which fixes this too.
 - **Windows file locks.** A PDF open in a reader, or antivirus scanning a new file, blocks replacing or deleting it. `fs.py` retries briefly, then reports which file is locked. Workspace cleanup never fails the run over a locked temp file; it warns and leaves the file.
-- **macOS and Linux are untested during the refactor (§2.1).** Kobo support works only on macOS today, and nothing confirms it still works there until §18 is done. File permissions, POSIX locks, terminal handling and the Linux Downloads lookup are also untested. The fakes reduce this risk, but real systems can differ from the fakes in ways nobody anticipated.
+- **macOS and Linux are only tested on CI runners during the refactor (§2.1).** File permissions, POSIX locks, paths, MAC parsing and conversion are covered there. Kobo support works only on macOS today, and nothing confirms it still works there until §18 is done, because the runners have no Kobo Desktop. Interactive terminal handling and the Downloads lookup on a real Linux desktop are also untested. Runners are clean VMs, so real machines can still differ in ways nobody anticipated: other network adapters, other terminals, user settings.
+- **CI and the local check can drift.** Both run `tests/tools/check.py`, so they check the same things. A failure only on CI means the Windows Server runner, a POSIX runner or the fresh VM differs from this PC. Fix it; don't mark the test as skipped for CI only.
 - **Kobo on Windows is only partly tested.** The key derivation and decryption are tested offline, but the folder layout and MAC reading need a real Kobo Desktop install on Windows (§9.1).
 - **Adobe server behaviour.** Fulfilling an ACSM a second time, and early loan returns, depend on the store's server. Both paths report the server's answer clearly rather than assuming success.
 - **Always-on logs.** Logs now exist without `-v`, so redaction must be complete. Every log record goes through the redaction functions at the handler, not at each call site. Tests assert that passwords, passphrases, download URLs, UUIDs and emails from fixture runs never appear unredacted. `--no-log` and `keep_days` let privacy-minded users limit what's kept.
@@ -1032,21 +1050,21 @@ New questions found during implementation:
 |---|---|---|
 | `redact_url` keeps the host, even when it is an IP address, such as a home-network address. `redact_text` masks IP addresses elsewhere. Should IP hosts be masked in the new `infra/redact`? | T0.4.1 (2026-09-29); pinned as-is in `golden/redact.json` | **Decided 2026-09-29: keep showing it.** A URL's host stays visible even when it is an IP address; IP addresses elsewhere in text are still masked. The golden values stay as they are |
 
-## 18. Deferred until after the refactor
+## 18. Checks on macOS and Linux
 
-These checks need macOS, Linux or a remote CI pipeline, none of which is available during the refactor (§2.1). Run them as soon as the platforms are available. Each one may turn up bugs that need fixing. Record any fix in the changelog, and add a test for it that runs on Windows where possible. The item IDs match the "Deferred until after the refactor" list in [REFACTOR_ACTION_PLAN.md](REFACTOR_ACTION_PLAN.md), which has the detail.
+These are the checks the Windows PC can't do (§2.1). They were first all deferred. Since GitHub Actions became available (2026-09-29), most run on the fork's hosted runners during the refactor, and only the parts that need a person at a real machine, a real install or a real account still wait. Each check may turn up bugs that need fixing. Record any fix in the changelog, and add a test for it that runs on Windows where possible. The item IDs match the lists at the end of [REFACTOR_ACTION_PLAN.md](REFACTOR_ACTION_PLAN.md), which have the detail. They are kept from the first version of this section because code and test comments cite them.
 
-| Area | What to check | Items |
-|---|---|---|
-| CI | Switch on the workflow; the whole suite passes on Windows, macOS and Linux with Python 3.11 and the newest release; the manual network workflow runs | D1 |
-| Test fixtures | The shared fixtures and every `posix_only` and `macos_only` test pass on real systems | D2 |
-| PKCS#12 shim on Linux | `libadobe` imports and signs through the shim on current Linux distributions, with no `oscrypto` installed | D3 |
-| File permissions | Private folders are `0700` and key-holding files `0600` on macOS and Linux | D4 |
-| Paths and known folders | `~/.config/book-loader/` on macOS and Linux; the Downloads folder on a real Linux desktop and on macOS | D5 |
-| MAC addresses | The `ifconfig` and `/sys` parsers work on real output, not only on the hand-written fixtures | D6 |
-| Kobo on macOS | `kobo list` and `kobo dedrm` against a real Kobo Desktop, with output identical to 0.1.0 | D7 |
-| Locks and file moves | Stale-lock detection, atomic writes and moves across file systems behave the same on POSIX | D8 |
-| Terminal and prompts | Rich output, prompts, masked input and the watched-downloads prompt in macOS and Linux terminals | D9 |
-| Conversion | WeasyPrint's native libraries and Calibre discovery on macOS and Linux | D10 |
-| Cross-OS backups | A library backed up on macOS restores on Windows and the reverse, with NFD and `:` in names | D11 |
-| Manual checks | The macOS or Linux half of the manual release checks | D12 |
+| Area | On CI runners during the refactor | Still needs a real machine afterwards | Items |
+|---|---|---|---|
+| CI | The workflow runs the whole suite on Windows, macOS and Linux with Python 3.11 and the newest release; the manual network workflow runs once network tests exist | — | D1 |
+| Test fixtures | The shared fixtures and every `posix_only` and `macos_only` test pass on the runners | — | D2 |
+| PKCS#12 shim on Linux | `libadobe` imports and signs through the shim on Ubuntu with OpenSSL 3, with `oscrypto` absent or broken | `auth create --anonymous` and `process` with a real ACSM on Linux | D3 |
+| File permissions | Private folders are `0700` and key-holding files `0600` on macOS and Linux | — | D4 |
+| Paths and known folders | `~/.config/book-loader/` on macOS and Linux; the Downloads folder on macOS and on a Linux server without `user-dirs.dirs` | The Downloads folder on a real Linux desktop | D5 |
+| MAC addresses | The `ifconfig` and `/sys` parsers work on real output captured on the runners | Physical adapters (Wi-Fi, Ethernet, bridges) on a real Mac, checked with D7 | D6 |
+| Kobo on macOS | — | `kobo list` and `kobo dedrm` against a real Kobo Desktop, with output identical to 0.1.0 | D7 |
+| Locks and file moves | Stale-lock detection, atomic writes and moves across file systems behave the same on POSIX | — | D8 |
+| Terminal and prompts | Plain output when piped, and prompts refused without a terminal, on each OS | Rich output, prompts, masked input and the watched-downloads prompt in real macOS and Linux terminals | D9 |
+| Conversion | WeasyPrint's native libraries and Calibre discovery, installed on each runner | — | D10 |
+| Cross-OS backups | A library backed up on the macOS runner restores on the Windows runner and the reverse, with NFD and `:` in names | `process` and `loan return` on the target with a real account | D11 |
+| Manual checks | — | The macOS or Linux half of the manual release checks | D12 |

@@ -61,6 +61,8 @@ def process_alive(pid: int) -> bool:
 
 
 def _windows_process_alive(pid: int) -> bool:
+    if sys.platform != "win32":  # the caller checks; this tells the type checker
+        raise OSError("only available on Windows")
     import ctypes
     from ctypes import wintypes
 

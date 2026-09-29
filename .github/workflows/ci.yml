@@ -1,31 +1,37 @@
-# T0.5.1. Written during the refactor but NOT run: no hosted CI is available until the
-# refactor is done (REFACTOR_PLAN §2.1). Until then, tests/tools/check.py is the gate.
+# T0.5.1, switched on in T0.6.1. Runs the local check (tests/tools/check.py) on the
+# fork's hosted runners for every push to main and every PR (REFACTOR_PLAN §2.1).
 #
-# Deferred item D1 (REFACTOR_ACTION_PLAN.md) switches this on:
-#   1. uncomment the push and pull_request triggers below
-#   2. update the action versions to their current major releases
-#   3. expect macOS and Linux failures the Windows-only work could not catch
+# setup-uv publishes no major tags since v8, so it is pinned by commit.
 name: CI
 
 on:
+  push:
+    branches: [main]
+  pull_request:
   workflow_dispatch:
-  # push:
-  #   branches: [main]
-  # pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
     name: ${{ matrix.os }}, Python ${{ matrix.python }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
         python: ["3.11", "3.14"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      # The same script as the local check: sync, ruff, black --check, pyright (once
-      # configured) and pytest with coverage, for this job's Python version. The script
-      # itself needs Python 3.11+ (tomllib), hence the fixed launcher version.
-      - run: uv run --no-project --python 3.14 python tests/tools/check.py --python ${{ matrix.python }}
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      # The same script as the local check: sync, ruff, black --check, pyright and pytest
+      # with coverage, for this job's Python version. The script itself needs Python
+      # 3.11+ (tomllib), hence the fixed launcher version. -rs lists why each test skipped,
+      # since which tests skip differs per OS.
+      - run: uv run --no-project --python 3.14 python tests/tools/check.py --python ${{ matrix.python }} -- -rs

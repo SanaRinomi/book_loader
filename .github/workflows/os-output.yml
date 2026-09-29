@@ -1,0 +1,40 @@
+# T0.6.4, item D6. Captures `ifconfig -a` on macOS and /sys/class/net on Linux for the
+# MAC address parser fixtures, with every address replaced by a fake one
+# (tests/tools/make_fixtures.py). Download the artifact and commit the files to
+# tests/fixtures/os_output/. The Windows captures come from a Windows 11 PC instead.
+#
+# Manual, plus PRs that change this workflow or the generator: a manual workflow can
+# only be started once it is on main.
+name: OS output
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/os-output.yml
+      - tests/tools/make_fixtures.py
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - run: uv sync --locked --python 3.14
+      - run: uv run --no-sync python -m tests.tools.make_fixtures os_output
+      - uses: actions/upload-artifact@v7
+        with:
+          name: os-output-${{ runner.os }}
+          path: |
+            tests/fixtures/os_output/ifconfig_macos_captured.txt
+            tests/fixtures/os_output/sys_class_net_linux_captured.txt
+          if-no-files-found: error

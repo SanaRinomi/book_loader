@@ -1,7 +1,7 @@
 """T2.4: ``infra/paths.py``, the global folder per OS and the old Windows location.
 
 The OS and environment are passed in through a ``Host``, so the Windows, macOS and
-Linux cases all run here. Real macOS and Linux checks are deferred (D5).
+Linux cases all run here, and CI runs the suite on real macOS and Linux as well (D5).
 """
 
 from __future__ import annotations

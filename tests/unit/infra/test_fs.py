@@ -1,8 +1,8 @@
 """T2.7: ``infra/fs.py``: atomic writes, unique names, private folders, locked files,
 the workspace and safe moves.
 
-``posix_only`` tests (file modes) are written but skip on Windows; their first run is
-deferred (D4, D8).
+``posix_only`` tests (file modes, a real cross-file-system move) skip on Windows and run
+on the macOS and Linux CI runners (D4, D8).
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ import os
 import stat
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -417,6 +418,31 @@ class TestSafeMove:
         assert not src.exists()
         assert leftovers(dst.parent) == []
 
+    @pytest.mark.posix_only
+    def test_across_real_file_systems(self, tmp_path, monkeypatch):
+        """No forced error: /dev/shm is a tmpfs on Linux, so os.replace really fails."""
+        shm = Path("/dev/shm")
+        if not (shm.is_dir() and os.access(shm, os.W_OK)):
+            pytest.skip("no writable /dev/shm")
+        if shm.stat().st_dev == tmp_path.stat().st_dev:
+            pytest.skip("/dev/shm is on the same file system as the temp folder")
+        copied = []
+        real_copy_move = fs._copy_move
+        monkeypatch.setattr(
+            fs, "_copy_move", lambda src, dst: (copied.append(src), real_copy_move(src, dst))
+        )
+        with tempfile.TemporaryDirectory(dir=shm) as other:
+            src, dst = Path(other) / "a.epub", tmp_path / "b.epub"
+            data = os.urandom(1024 * 1024 + 3)
+            src.write_bytes(data)
+            os.utime(src, (1_700_000_000, 1_700_000_000))
+            safe_move(src, dst)
+            assert copied == [src]
+            assert dst.read_bytes() == data
+            assert dst.stat().st_mtime == 1_700_000_000
+            assert not src.exists()
+            assert leftovers(tmp_path) == []
+
     def test_windows_cross_drive_error_is_recognised(self, tmp_path, monkeypatch):
         real = os.replace
 
@@ -460,6 +486,7 @@ class TestWorkspace:
 
     @pytest.mark.windows_only
     def test_hidden_attribute_on_windows(self, tmp_path):
+        assert sys.platform == "win32"  # for the type checker on other OSes
         with Workspace(tmp_path) as work:
             assert os.stat(work.path).st_file_attributes & stat.FILE_ATTRIBUTE_HIDDEN
 

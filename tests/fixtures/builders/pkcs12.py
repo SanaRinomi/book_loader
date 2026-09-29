@@ -15,7 +15,9 @@ import base64
 import datetime
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
+import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
@@ -151,3 +153,29 @@ def with_pkcs12(auth_dir: Path, data: bytes) -> None:
 
 def device_password(auth_dir: Path) -> bytes:
     return base64.b64encode((auth_dir / "devicesalt").read_bytes())
+
+
+def oscrypto() -> tuple[Any, Any] | None:
+    """oscrypto's ``keys`` and ``asymmetric`` modules, or None when they can't be used.
+
+    None when oscrypto isn't installed, and also when it can't load its crypto library:
+    1.3.0 fails that way on Linux with OpenSSL 3 ("Error detecting the version of
+    libcrypto"), the bug the shim removes (REFACTOR_PLAN §16).
+    """
+    try:
+        from oscrypto import errors
+    except ImportError:
+        return None
+    try:
+        from oscrypto import asymmetric, keys
+    except errors.LibraryNotFoundError:
+        return None
+    return keys, asymmetric
+
+
+def oscrypto_or_skip() -> tuple[Any, Any]:
+    """Like ``oscrypto()``, but skips the test when oscrypto can't be used."""
+    modules = oscrypto()
+    if modules is None:
+        pytest.skip("oscrypto isn't installed or can't load its crypto library")
+    return modules
