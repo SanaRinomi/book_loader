@@ -178,7 +178,7 @@ class TestRetryLocked:
     def test_real_sharing_violation_times_out(self, tmp_path):
         path = tmp_path / "book.epub"
         path.write_bytes(b"x")
-        thread = hold_open(path, 1.5)
+        thread = hold_open(path, 0.6)
         try:
             with pytest.raises(LockedError) as info:
                 retry_locked(path.unlink, path, timeout=0.3)
@@ -342,7 +342,14 @@ class TestPrivateDir:
         subprocess.run(
             ["icacls", str(path), "/deny", "*S-1-1-0:(W)"], check=True, capture_output=True
         )
-        assert windows_broad_access(path) == []
+        try:
+            assert windows_broad_access(path) == []
+        finally:
+            # The deny rule applies to this user too; without removing it, pytest
+            # can't delete the folder afterwards.
+            subprocess.run(
+                ["icacls", str(path), "/remove:d", "*S-1-1-0"], check=True, capture_output=True
+            )
 
     @pytest.mark.windows_only
     def test_profile_folders_are_private(self, tmp_path):
@@ -591,7 +598,7 @@ class TestWorkspace:
             with Workspace(tmp_path, reporter=reporter, lock_timeout=0.2) as work:
                 file = work.path / "book.epub"
                 file.write_bytes(b"x")
-                thread = hold_open(file, 1.0)
+                thread = hold_open(file, 0.5)
                 path = work.path
             assert path.exists()
             assert len(work.warnings) == 1
