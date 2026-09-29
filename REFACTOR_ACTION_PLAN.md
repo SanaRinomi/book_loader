@@ -390,11 +390,11 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - `str(Secret)` and `repr(Secret)` are masked
 
 ### T2.10 `infra/logging.py` (M)
-- [ ] **T2.10.1** `capture_vendored_print(logger)`: a context manager that sends vendored `print()` lines to the logger at DEBUG instead of swallowing them.
-- [ ] **T2.10.2** A redaction filter on the handler: every record's message and arguments go through `redact_text`, and URLs through `redact_url`.
-- [ ] **T2.10.3** `setup_run_logging(logs_dir, keep_days, extra_file, enabled)`:
-  - rotates `latest-book-loader.log` to `book-loader-<start time>.log`
-  - falls back to `latest-book-loader-<pid>.log` when the file is locked
+- [x] **T2.10.1** `capture_vendored_print(logger)`: a context manager that sends vendored `print()` lines to the logger at DEBUG instead of swallowing them.
+- [x] **T2.10.2** A redaction filter on the handler: every record's message and arguments go through `redact_text`, and URLs through `redact_url`. Tracebacks too. It also blanks every password or passphrase registered with `register_secret` (the CLI registers each one `resolve_secret` returns) and text like `password=…` or `<password>…</password>`, so `redact.py` and its golden values stay unchanged.
+- [x] **T2.10.3** `setup_run_logging(logs_dir, keep_days, extra_file, enabled)`:
+  - rotates `latest-book-loader.log` to `book-loader-<start time>.log`; the start time is read from the log's first line, which each run writes
+  - falls back to `latest-book-loader-<pid>.log` when the file is locked: a `Lock` (T2.8) marks which run owns it, which works on every OS, and a rename that fails still falls back
   - deletes `*.log` and `download_error*.html` older than `keep_days`
   - `keep_days = 0` keeps everything
 - **Tests:**
@@ -432,7 +432,7 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - a v0 fixture archive from T0.4.4 is read
 
 ### T2.12 Move `redact.py` (S)
-- [ ] **T2.12.1** `git mv utils/redact.py infra/redact.py`. Leave `utils/redact.py` re-exporting it until Phase 6.
+- [ ] **T2.12.1** `git mv utils/redact.py infra/redact.py`. Leave `utils/redact.py` re-exporting it until Phase 6. Point `infra/logging.py` at `.redact` and remove its entry from `TEMPORARY` in `tests/unit/test_layering.py`.
 - [ ] **T2.12.2** Change the import in `libadobe.py` and `libadobeFulfill.py` to `from ...infra.redact import …`: the one allowed vendored edit in this phase. Update `MANIFEST.sha256` and `PATCHES.md`.
 - **Tests:** the T0.4.1 golden tests are moved to point at `infra.redact`, the characterization suite passes, and the vendor guard passes after the manifest update.
 

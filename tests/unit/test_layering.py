@@ -27,6 +27,11 @@ ALLOWED = {
     "infra": {"domain", "infra"},
 }
 
+# Imports allowed for now, each with the task that removes it.
+TEMPORARY = {
+    ("infra/logging.py", "book_loader.utils.redact"),  # T2.12 moves redact.py into infra
+}
+
 
 def imports_of(path: Path) -> set[str]:
     """Absolute names of the modules ``path`` imports."""
@@ -49,8 +54,11 @@ def files_of(package: str) -> list[Path]:
 @pytest.mark.parametrize("package", ALLOWED)
 def test_package_imports_only_lower_layers(package):
     for path in files_of(package):
+        where = path.relative_to(PACKAGE_ROOT).as_posix()
         for name in imports_of(path):
             parts = name.split(".")
+            if (where, name) in TEMPORARY:
+                continue
             if parts[0] == "book_loader":
                 assert (
                     len(parts) > 1 and parts[1] in ALLOWED[package]
@@ -63,6 +71,12 @@ def test_domain_imports_only_the_standard_library():
         for name in imports_of(path):
             top = name.split(".")[0]
             assert top in sys.stdlib_module_names or top == "book_loader", f"{path.name}: {name}"
+
+
+def test_temporary_exceptions_are_still_needed():
+    # Once the task behind an exception is done, remove the exception too.
+    for where, name in TEMPORARY:
+        assert name in imports_of(PACKAGE_ROOT / where), f"{where} no longer imports {name}"
 
 
 def test_relative_imports_are_resolved():
