@@ -319,9 +319,9 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - resolving paths never creates folders
 
 ### T2.5 `infra/settings.py` (M)
-- [ ] **T2.5.1** A generic lookup with layers: flag, env, local.toml, library.toml, global config.toml, default. It reads TOML with `tomllib`. The library layers return nothing until Phase 9 plugs them in. Each value records where it came from.
-- [ ] **T2.5.2** Auth folder resolution: `--auth-dir`, then `BOOK_LOADER_AUTH_DIR`, then the library, then global.
-- [ ] **T2.5.3** Settings never write to disk.
+- [x] **T2.5.1** A generic lookup with layers: flag, env, local.toml, library.toml, global config.toml, default. It reads TOML with `tomllib`. The library layers return nothing until Phase 9 plugs them in. Each value records where it came from.
+- [x] **T2.5.2** Auth folder resolution: `--auth-dir`, then `BOOK_LOADER_AUTH_DIR`, then the library, then global.
+- [x] **T2.5.3** Settings never write to disk.
 - **Tests:**
   - precedence for each layer with conflicting values
   - the source is reported correctly
