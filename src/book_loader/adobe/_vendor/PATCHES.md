@@ -15,29 +15,25 @@ and this file is not hashed.
 | | |
 | --- | --- |
 | Repository | <https://github.com/Leseratte10/acsm-calibre-plugin>, folder `calibre-plugin/` |
-| Pinned commit | `fb288afb3a83156f0e534eb1e0ec1cbc45a3e675` (2025-10-07, "Fix CI") |
+| Pinned commit | `4eff3ee35ac760ccad063639401b303b7207aa9c` (2026-09-23, "Update .gitignore") |
 | License | GPL-3.0-or-later (upstream `LICENSE` and README). Each file keeps its header, "Copyright (c) 2021-2023 Leseratte10". book-loader is GPL-3.0-or-later too |
 
 How the pin was chosen (T1.2.1, 2026-09-29): each file as it was first imported into
 book-loader (commit `f84918b`; `libpdf.py` at `d197e84`) was compared with every upstream
 revision of that file. After the relative imports are undone, all five match upstream
 revisions that exist together in commits `2f40289` (2024-09-17) to `fb288af` (2025-10-07).
-The pin is the newest of these. No release tag contains them: the newest tag, `v0.0.16`, is
-from 2022.
+No release tag contains them: the newest tag, `v0.0.16`, is from 2022. The only upstream
+change to these files after `fb288af` was `bccca40` (2026-06-24) in `libadobeAccount.py`,
+which `d197e84` had partly backported. T1.6 applied the rest (2026-09-29), so all five files
+now match the upstream head of that day, `4eff3ee`, which became the pin.
 
-Upstream changes after the pin that are **not** here (checked up to `4eff3ee`, 2026-09-23):
-
-- `bccca40` (2026-06-24), `libadobeAccount.signIn()`: a clearer error for accounts that need a
-  password reset after the ByteBooks migration. Two of its three hunks are already backported
-  (see [libadobeAccount.py](#libadobeaccountpy)). The missing hunk changes the message
-  "Invalid response to login request" to "... (please open a bug report)" and removes a
-  blank line. T1.6 in REFACTOR_ACTION_PLAN.md applies it.
+There are no upstream changes to these files after the pin.
 
 ## Comparing with upstream
 
 ```sh
 git clone https://github.com/Leseratte10/acsm-calibre-plugin
-git -C acsm-calibre-plugin show fb288af:calibre-plugin/libadobe.py \
+git -C acsm-calibre-plugin show 4eff3ee:calibre-plugin/libadobe.py \
   | diff -u --strip-trailing-cr - src/book_loader/adobe/_vendor/libadobe.py
 ```
 
@@ -71,12 +67,9 @@ Unchanged. Added in `d197e84`, which writes the license into downloaded PDFs; se
 ## libadobeAccount.py
 
 - Relative imports: the six `from libadobe import` lines at the top and the one in
-  `encryptLoginCredentials()`.
-- `signIn()`: partial backport of upstream `bccca40` (added in `d197e84`). It adds the
-  `E_ADEPT_RESET_PW_REQUIRED` branch ("Server requires a password reset due to ByteBooks
-  migration ...") and changes `"Unknown Adobe error:" + credentials` to
-  `+ str(credentials)`, which fixes a `TypeError`. The rest of `bccca40` is not applied yet
-  (see above). The backported `else:` line also lost upstream's trailing space.
+  `encryptLoginCredentials()`. Nothing else differs from upstream.
+- History: `d197e84` backported part of upstream `bccca40` into `signIn()`, and T1.6 made
+  `signIn()` identical to upstream.
 
 ## libadobe.py
 

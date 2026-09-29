@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   authorization with its own PKCS#12 reader, written in pure Python. This avoids
   `oscrypto`'s "Error detecting the version of libcrypto" failure on some Linux systems with
   OpenSSL 3. The new reader has been tested on Windows only so far.
+- When Adobe's reply to an Adobe ID sign-in can't be read, the error now says
+  "Invalid response to login request (please open a bug report)", as the Calibre plugin does.
 
 ### Fixed
 - On Windows, about one Adobe authorization in 465 could not sign requests, failing with
