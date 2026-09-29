@@ -1,6 +1,8 @@
 # book-loader refactor plan
 
 > Status: **planning only, no code changed yet.** Written 2026-09-28 against commit `3f70d22`, and revised the same day after a review against [ORIGINAL_STRUCTURE.md](ORIGINAL_STRUCTURE.md). That file describes the code this plan starts from. References like "§6" point within this file. The step-by-step tasks and tests for carrying it out are in [REFACTOR_ACTION_PLAN.md](REFACTOR_ACTION_PLAN.md).
+>
+> Revised 2026-09-29: the refactor is carried out on Windows only, with no remote CI. §2.1 describes these working constraints, and §18 lists what must be checked, and possibly fixed, on macOS and Linux once the refactor is done.
 
 ## 1. Goal and decisions
 
@@ -29,6 +31,7 @@ Decisions made while planning (2026-09-28):
 | 17 | Logs | **Always keep redacted logs.** The current run writes `latest-book-loader.log`; older logs are kept for 30 days (§9.11) |
 | 18 | Backup selection | **Named presets plus a `custom` choice** for advanced backups. Scripts must name a preset or list parts (§10.7) |
 | 19 | Future plans | `auth import-ade` and `auth export-key` are planned for later; `auth upgrade` is dropped (§9.12) |
+| 20 | Test platforms during the refactor (2026-09-29) | **Windows only, checked locally.** No macOS, Linux or remote CI is available until the refactor is done. Behaviour on those systems is covered by fakes where possible and verified afterwards (§2.1, §18) |
 
 ## 2. Guardrails
 
@@ -42,6 +45,21 @@ Decisions made while planning (2026-09-28):
 - **Tests come first.** There are no tests today, so Phase 0 (§15) builds the safety net before any code moves.
 - **Plain mode stays the default.** Without a library, book-loader works as it does today: files go to `-o` or the current folder.
 - **Don't change on-disk formats without a reason.** Every format that changes keeps a reader for the old version and gets a migration (§11).
+
+### 2.1 Working constraints during the refactor
+
+Recorded 2026-09-29. These hold until the refactor is complete.
+
+- **Only Windows is available.** There is no macOS, Linux or other POSIX machine, including virtual machines and WSL.
+- **No remote pipelines.** GitHub Actions and comparable hosted CI can't be used.
+
+What this changes:
+- **A local check replaces CI as the gate.** It runs ruff, black `--check`, the type checker and pytest on Windows, under both Python 3.11 and the newest release. Every task must pass it.
+- **The CI workflow is still written,** so it can be switched on later, but it isn't run during the refactor.
+- **Code for other OSes is tested through fakes.** OS-specific code takes the platform, environment and command output as inputs, so tests for macOS and Linux behaviour run on Windows. Examples are fake environments for paths, and saved `ifconfig` and `/sys` output for MAC parsing.
+- **Some tests can't run at all.** Tests marked `posix_only` or `macos_only` are still written but always skip. On Windows, `chmod` only toggles the read-only flag, so file-mode checks such as `0600` and `0700` can't be tested there even with fakes.
+- **Results for macOS and Linux are unverified.** Nothing in this refactor may claim they work there. Releases made before §18 is done say in the changelog that only Windows was tested.
+- **Deferred checks are collected in §18.** They may turn up bugs that need fixing once the platforms are available.
 
 ## 3. What's wrong today
 
@@ -891,6 +909,7 @@ book-loader migrate --cleanup       delete old data that has been migrated and v
 - **Live tests** (Adobe servers, a real Kobo install) are marked `@pytest.mark.network` / `@pytest.mark.live` and skipped by default.
 - **Phase 0 realism:** the current code has few places to swap in fakes, so Phase 0 tests work at the level of the CLI and public functions, with `monkeypatch` (for example on `_get_mac_addrs`). That way they survive the rewrite.
 - **CI:** GitHub Actions on Windows, macOS and Linux with Python 3.11 and the newest release, running ruff, black `--check`, the type checker and pytest. Paths, MAC addresses, permissions, known folders and console handling differ per OS, so all three are needed.
+  - **During the refactor (§2.1):** the same checks run locally on Windows only, under both Python versions. The workflow file is written but not run. Running it on macOS and Linux is the first item in §18.
 - `TESTING.md` is replaced by the test suite and a short README section.
 
 ## 14. Feature parity checklist
@@ -941,7 +960,7 @@ One PR each. Every phase leaves the CLI working and the tests passing.
 
 | Phase | Content |
 |---|---|
-| 0 | **Safety net:** the §13 tests that can run against the current code, the `--help` snapshot, and CI on three OSes. Raise `requires-python` to 3.11, update the classifiers, black/ruff targets and dependency groups (§4.1). No other production changes |
+| 0 | **Safety net:** the §13 tests that can run against the current code, the `--help` snapshot, and a local check on Windows with Python 3.11 and the newest release. A CI workflow for three OSes is written but not run until after the refactor (§2.1). Raise `requires-python` to 3.11, update the classifiers, black/ruff targets and dependency groups (§4.1). No other production changes |
 | 1 | **Move the vendored files** to `adobe/_vendor/` and `drm/_vendor/` with `git mv`, changing only import paths, and write `PATCHES.md` for each |
 | 2 | **`domain/` and `infra/`:** errors with hints, models, the `Reporter` and `Prompter` interfaces, `paths` (`%LOCALAPPDATA%` on Windows, with the old folder as a fallback), `names`, `locks`, `secrets`, `logging` (log files, rotation, 30-day cleanup), `Settings` without side effects, `Workspace` (with `preserve`), `RetentionPolicy`, `ConflictPolicy`, and `archive` (manifest, encryption, safe extraction) |
 | 3 | **Adobe adapters:** `AuthStore`, `AdeptSession`, `PendingStore` (v1 plus v0 reader), `LoanStore`, `Fulfiller`, `identity`, `backup` on top of `infra/archive` (restore fixes, original archives) |
@@ -959,6 +978,7 @@ One PR each. Every phase leaves the CLI working and the tests passing.
 - **0.2.0** = phases 0–6: the same features in the new structure, with the §6 fixes, plus logs, `--json` and masked password input. The one-release notices (§7, §11.2) start here.
 - **0.3.0** = phases 7–8: pending, watched downloads, batch, loans, optimize.
 - **0.4.0** = phases 9–12: libraries, `library watch`, backups, migrations, docs.
+- **Platform caveat (§2.1):** releases made before the §18 checks are done are tested on Windows only. Their changelog says so, and macOS and Linux users are told to expect possible problems.
 
 ## 16. Risks
 
@@ -966,8 +986,9 @@ One PR each. Every phase leaves the CLI working and the tests passing.
   - document a workaround
   - pin a fixed upstream commit in development installs
   - later, replace the few `oscrypto` calls through a small shim documented in `PATCHES.md`
-  - Decide in Phase 1.
+  - Decide in Phase 1. Because no Linux system is available (§2.1), the decision is made from the upstream bug report alone and recorded as unverified. It is checked on Linux afterwards (§18).
 - **Windows file locks.** A PDF open in a reader, or antivirus scanning a new file, blocks replacing or deleting it. `fs.py` retries briefly, then reports which file is locked. Workspace cleanup never fails the run over a locked temp file; it warns and leaves the file.
+- **macOS and Linux are untested during the refactor (§2.1).** Kobo support works only on macOS today, and nothing confirms it still works there until §18 is done. File permissions, POSIX locks, terminal handling and the Linux Downloads lookup are also untested. The fakes reduce this risk, but real systems can differ from the fakes in ways nobody anticipated.
 - **Kobo on Windows is only partly tested.** The key derivation and decryption are tested offline, but the folder layout and MAC reading need a real Kobo Desktop install on Windows (§9.1).
 - **Adobe server behaviour.** Fulfilling an ACSM a second time, and early loan returns, depend on the store's server. Both paths report the server's answer clearly rather than assuming success.
 - **Always-on logs.** Logs now exist without `-v`, so redaction must be complete. Every log record goes through the redaction functions at the handler, not at each call site. Tests assert that passwords, passphrases, download URLs, UUIDs and emails from fixture runs never appear unredacted. `--no-log` and `keep_days` let privacy-minded users limit what's kept.
@@ -991,3 +1012,22 @@ All questions raised while planning have been answered (2026-09-28); the answers
 | DRM removal for loans | Kept, with a reminder of the terms (§9.7) |
 
 No open questions remain. New ones found during implementation go here.
+
+## 18. Deferred until after the refactor
+
+These checks need macOS, Linux or a remote CI pipeline, none of which is available during the refactor (§2.1). Run them as soon as the platforms are available. Each one may turn up bugs that need fixing. Record any fix in the changelog, and add a test for it that runs on Windows where possible. The item IDs match the "Deferred until after the refactor" list in [REFACTOR_ACTION_PLAN.md](REFACTOR_ACTION_PLAN.md), which has the detail.
+
+| Area | What to check | Items |
+|---|---|---|
+| CI | Switch on the workflow; the whole suite passes on Windows, macOS and Linux with Python 3.11 and the newest release; the manual network workflow runs | D1 |
+| Test fixtures | The shared fixtures and every `posix_only` and `macos_only` test pass on real systems | D2 |
+| `oscrypto` on Linux | `libadobe` imports and signs on current Linux distributions; the Phase 1 decision holds | D3 |
+| File permissions | Private folders are `0700` and key-holding files `0600` on macOS and Linux | D4 |
+| Paths and known folders | `~/.config/book-loader/` on macOS and Linux; the Downloads folder on a real Linux desktop and on macOS | D5 |
+| MAC addresses | The `ifconfig` and `/sys` parsers work on real output, not only on the hand-written fixtures | D6 |
+| Kobo on macOS | `kobo list` and `kobo dedrm` against a real Kobo Desktop, with output identical to 0.1.0 | D7 |
+| Locks and file moves | Stale-lock detection, atomic writes and moves across file systems behave the same on POSIX | D8 |
+| Terminal and prompts | Rich output, prompts, masked input and the watched-downloads prompt in macOS and Linux terminals | D9 |
+| Conversion | WeasyPrint's native libraries and Calibre discovery on macOS and Linux | D10 |
+| Cross-OS backups | A library backed up on macOS restores on Windows and the reverse, with NFD and `:` in names | D11 |
+| Manual checks | The macOS or Linux half of the manual release checks | D12 |
