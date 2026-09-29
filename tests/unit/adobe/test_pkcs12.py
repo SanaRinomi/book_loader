@@ -1,7 +1,8 @@
 """T1.5: ``adobe/pkcs12.py``, the pure-Python replacement for the oscrypto calls in libadobe.
 
 The shim is checked against ``cryptography`` (always) and against oscrypto (while it is
-installed). Tests comparing with oscrypto skip when it can't be imported.
+installed). Tests comparing with oscrypto skip when it can't be imported, or can't load
+its crypto library, as on Linux with OpenSSL 3.
 """
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ from tests.fixtures.builders.pkcs12 import (
     PASSWORD,
     SCHEMES,
     build_pkcs12,
+    oscrypto_or_skip,
     reference,
 )
 
@@ -103,8 +105,7 @@ def results(data: bytes, password: bytes) -> tuple[bytes, bytes, list[bytes]]:
 
 
 def oscrypto_results(data: bytes, password: bytes) -> tuple[bytes, bytes, list[bytes]]:
-    keys = pytest.importorskip("oscrypto.keys")
-    asymmetric = pytest.importorskip("oscrypto.asymmetric")
+    keys, asymmetric = oscrypto_or_skip()
     key, cert, others = keys.parse_pkcs12(data, password)
     return (
         asymmetric.dump_private_key(key, None, "der"),
@@ -114,7 +115,7 @@ def oscrypto_results(data: bytes, password: bytes) -> tuple[bytes, bytes, list[b
 
 
 def oscrypto_can_read(data: bytes, password: bytes) -> bool:
-    keys = pytest.importorskip("oscrypto.keys")
+    keys = oscrypto_or_skip()[0]
     try:
         keys.parse_pkcs12(data, password)
     except (ValueError, OSError):  # its 3DES key derivation bug; OSError from Windows CNG
@@ -206,13 +207,18 @@ def test_legacy_file_matches_oscrypto():
     assert results(data, LEGACY_PASSWORD) == oscrypto_results(data, LEGACY_PASSWORD)
 
 
+@pytest.mark.windows_only
 def test_oscrypto_cannot_read_the_kdf_bug_file():
-    """The shim reads it (above); oscrypto 1.3.0 derives the wrong 3DES key."""
+    """The shim reads it (above); oscrypto 1.3.0 derives the wrong 3DES key.
+
+    Only on Windows, where oscrypto derives PKCS#12 keys in its own Python code; on
+    macOS it reads the file.
+    """
     assert not oscrypto_can_read(KDF_BUG.read_bytes(), LEGACY_PASSWORD)
 
 
 def test_pem_output_matches_oscrypto():
-    asymmetric = pytest.importorskip("oscrypto.asymmetric")
+    asymmetric = oscrypto_or_skip()[1]
     key, cert, _ = parse_pkcs12(LEGACY.read_bytes(), LEGACY_PASSWORD)
     assert key is not None and cert is not None
     assert dump_certificate(cert) == asymmetric.dump_certificate(cert)
@@ -330,7 +336,7 @@ def test_unencrypted_bundle():
     ref = reference(data, None)
     assert (key, cert, others) == (ref.key, ref.certificate, list(ref.others))
     # oscrypto keeps the key bag's [0] tag; without it, the key is the same.
-    keys = pytest.importorskip("oscrypto.keys")
+    keys = oscrypto_or_skip()[0]
     o_key, o_cert, o_others = keys.parse_pkcs12(data, None)
     assert o_key.dump() != key and o_key.untag().dump() == key
     assert (cert, others) == dump_all((None, o_cert, o_others))[1:]
@@ -341,7 +347,7 @@ def test_certificates_only_ordered_like_oscrypto():
     data = build_pkcs12("aes256", with_key=False, extra_certificates=3)
     key, cert, others = dump_all(parse_pkcs12(data, PASSWORD))
     assert key is None and cert is not None and len(others) == 2
-    keys = pytest.importorskip("oscrypto.keys")
+    keys = oscrypto_or_skip()[0]
     assert (key, cert, others) == dump_all(keys.parse_pkcs12(data, PASSWORD))
 
 
@@ -349,7 +355,7 @@ def test_ec_ca_certificates_ordered_like_oscrypto():
     data = build_pkcs12("aes256", extra_certificates=1, ec_certificates=2)
     parsed = dump_all(parse_pkcs12(data, PASSWORD))
     assert sorted(parsed[2]) == sorted(reference(data, PASSWORD).others)
-    keys = pytest.importorskip("oscrypto.keys")
+    keys = oscrypto_or_skip()[0]
     assert parsed == dump_all(keys.parse_pkcs12(data, PASSWORD))
 
 
