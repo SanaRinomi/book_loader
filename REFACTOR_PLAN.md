@@ -1023,7 +1023,7 @@ New questions found during implementation:
 
 | Question | Found | Status |
 |---|---|---|
-| `redact_url` keeps the host, even when it is an IP address, such as a home-network address. `redact_text` masks IP addresses elsewhere. Should IP hosts be masked in the new `infra/redact`? | T0.4.1 (2026-09-29); pinned as-is in `golden/redact.json` | Open |
+| `redact_url` keeps the host, even when it is an IP address, such as a home-network address. `redact_text` masks IP addresses elsewhere. Should IP hosts be masked in the new `infra/redact`? | T0.4.1 (2026-09-29); pinned as-is in `golden/redact.json` | **Decided 2026-09-29: keep showing it.** A URL's host stays visible even when it is an IP address; IP addresses elsewhere in text are still masked. The golden values stay as they are |
 
 ## 18. Deferred until after the refactor
 
