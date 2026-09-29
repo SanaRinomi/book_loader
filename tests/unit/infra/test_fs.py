@@ -460,6 +460,7 @@ class TestWorkspace:
 
     @pytest.mark.windows_only
     def test_hidden_attribute_on_windows(self, tmp_path):
+        assert sys.platform == "win32"  # for the type checker on other OSes
         with Workspace(tmp_path) as work:
             assert os.stat(work.path).st_file_attributes & stat.FILE_ATTRIBUTE_HIDDEN
 
