@@ -5,6 +5,8 @@
 > Written 2026-09-28 against commit `3f70d22`. Tick the boxes as work lands.
 >
 > Revised 2026-09-29 for the working constraints in REFACTOR_PLAN §2.1: only Windows is available, and there is no remote CI. Steps that need macOS, Linux or CI are marked **Deferred** with an item ID (D1, D2, …). Those items are listed in [Deferred until after the refactor](#deferred-until-after-the-refactor) at the end, as things that may need debugging or fixing once the refactor is done.
+>
+> Revised again 2026-09-29: GitHub Actions is available in the fork [SanaRinomi/book_loader](https://github.com/SanaRinomi/book_loader), with hosted Windows, macOS and Linux runners (REFACTOR_PLAN §2.1). T0.6 switches CI on. Most deferred items now run on the runners during the refactor; they are listed in [Checks on GitHub Actions](#checks-on-github-actions). Only the parts that need a real machine, install or account stay in [Deferred until after the refactor](#deferred-until-after-the-refactor). The item IDs (D1 to D12) are unchanged, and an item split between the two lists keeps its ID in both.
 
 ## How to use this plan
 
@@ -14,15 +16,16 @@
 - **Phase 0 tests pin current behaviour.** Where a test targets old internals, the later task that replaces the module ports the test, reusing the same fixtures and expected values. The expected values never change without a decision in REFACTOR_PLAN.md.
 
 ### Branches and PRs
-- One branch and PR per phase: `refactor/p0-safety-net`, `refactor/p1-vendor`, … Large phases can split into one PR per task group, but every PR must pass the local check (T0.5.4).
+- One branch and PR per phase: `refactor/p0-safety-net`, `refactor/p1-vendor`, … Large phases can split into one PR per task group, but every PR must pass the local check (T0.5.4) and, from T0.6, CI.
+- PRs target `main` of the fork `SanaRinomi/book_loader`, not the upstream `spreered/book_loader`, so CI runs in the fork.
 - Commit messages say which tasks they complete (`T4.2.3`).
 
 ### Definition of done (applies to every task)
 - [ ] The code is written in the target location (REFACTOR_PLAN §4) and follows the layering rule: nothing below `cli/` imports `click`, `rich`, `questionary` or `prompt_toolkit`.
 - [ ] The tests listed for the task are written and pass locally: `uv run pytest`.
 - [ ] `uv run ruff check src tests`, `uv run black --check src tests`, and (from Phase 2) `uv run pyright` pass.
-- [ ] The local check (T0.5.4) passes on Windows with Python 3.11 and 3.14. CI on macOS and Linux is deferred (D1).
-- [ ] Code that behaves differently per OS takes the platform, environment and command output as inputs, so its macOS and Linux behaviour is tested with fakes on Windows. Anything that still can't be tested on Windows is added to the deferred list.
+- [ ] The local check (T0.5.4) passes on Windows with Python 3.11 and 3.14 before pushing, and CI (T0.6) passes on the PR on the Windows, macOS and Linux runners.
+- [ ] Code that behaves differently per OS takes the platform, environment and command output as inputs, so its macOS and Linux behaviour is tested with fakes on Windows as well as for real on CI. Anything the runners can't check either (a real terminal, a real install, a real account) is added to the deferred list.
 - [ ] The help parity test (T0.3) still passes.
 - [ ] User-visible changes have a `CHANGELOG.md` entry under "Unreleased".
 - [ ] No vendored file changed except in tasks that say so, and then the vendor manifest (T1.4) is updated in the same commit.
@@ -59,7 +62,7 @@ tests/
 
 The default run is `-m "not network and not live"`. `weasyprint` tests skip themselves when the libraries are missing.
 
-During the refactor only Windows is available, so `macos_only` and `posix_only` tests are written but always skip. Their first real run is deferred (D2).
+`macos_only` and `posix_only` tests skip in the local check on Windows and run on the macOS and Linux runners in CI (D2, from T0.6).
 
 ### Size key
 **S** = under half a day, **M** = one to two days, **L** = three days or more. These are relative, meant for ordering work, not deadlines.
@@ -95,7 +98,7 @@ Goal: pin today's behaviour in tests and set up tooling and a local check before
   - `downloads_dir`
   - `frozen_time`
   - `cli_runner`: a Click `CliRunner` with stderr kept separate from stdout.
-- **Tests:** a smoke test that every fixture works on all three OSes. Runs on Windows now; macOS and Linux are deferred (D2).
+- **Tests:** a smoke test that every fixture works on all three OSes. Runs on Windows now; on macOS and Linux from T0.6 (D2).
 
 ### T0.3 Help parity snapshot (S)
 - [x] **T0.3.1** Write `tests/tools/dump_help.py`. It walks the Click command tree and saves, for every command and group, the set of option names (for example `-o/--output`, `--to-pdf`, `-v/--verbose`) and arguments, into `tests/fixtures/golden/help_options.json`.
@@ -127,14 +130,14 @@ These tests pin what 0.1.0 does today. They live in `tests/characterization/`, e
     - a missing folder raises `KoboLibraryNotFoundError`
     - added 2026-09-29, as `xfail(strict=True)` for known bugs that T4.2 must fix: a change still in the WAL file is listed, and an XHTML file starting with a UTF-8 BOM is decrypted with the right key
   - **Key vectors:** save the derived key for the fixed inputs as `golden/kobo_keys.json`.
-  - **OS output fixtures:** save real `getmac` and `Get-NetAdapter` output from this Windows machine in `fixtures/os_output/`. The macOS `ifconfig -a` and Linux `/sys/class/net` fixtures are written by hand from documented examples, and replaced with real captures later (deferred D6).
+  - **OS output fixtures:** save real `getmac` and `Get-NetAdapter` output from this Windows machine in `fixtures/os_output/`. The macOS `ifconfig -a` and Linux `/sys/class/net` fixtures are written by hand from documented examples, and replaced with real captures from the CI runners in T0.6.4 (D6).
 - [x] **T0.4.4 Backup helpers** (`cli.backup_auth`, `list_backups`, `restore_auth`):
   - a round trip into a folder with the same name
   - backups listed newest first
   - the known bug as an `xfail(strict=True)` test: restoring into a folder with a different name puts the files in the wrong place. T3.8 must make it pass.
   - save one archive to `fixtures/v0/auth_anonymous_20260101_000000.tar.gz`, and one named in `reset`'s style (`auth_backup_*`)
 - [x] **T0.4.5 Pending store** (`ACSMFulfiller._save_pending`, `_load_pending`, `_clear_pending`) with a stub account whose `get_device_key()` returns fixed bytes:
-  - JSON fields and file mode (`0600` on POSIX; `posix_only`, deferred D4)
+  - JSON fields and file mode (`0600` on POSIX; `posix_only`, runs on CI from T0.6, D4)
   - the link page is written into the folder passed in
   - a mismatched fingerprint is ignored
   - clearing deletes both files
@@ -171,17 +174,40 @@ These tests pin what 0.1.0 does today. They live in `tests/characterization/`, e
   - **Test:** `parse_fulfillment` gives the expected `book_name`, format and URL for each, which checks the fixtures themselves.
 
 ### T0.5 Local check and continuous integration (S)
-No remote CI is available during the refactor (REFACTOR_PLAN §2.1). The local check in T0.5.4 is the gate for every task; the workflows are written now so they can be switched on later.
-- [x] **T0.5.1** `.github/workflows/ci.yml`, written but not run until after the refactor (deferred D1):
+No remote CI was available when this was written (REFACTOR_PLAN §2.1). The local check in T0.5.4 is the gate for every task; the workflows were written so they could be switched on later, which T0.6 does.
+- [x] **T0.5.1** `.github/workflows/ci.yml`, written but not run until after the refactor (deferred D1; switched on by T0.6.1):
   - runs on Windows, macOS and Linux, each with Python 3.11 and 3.14
   - steps: `uv sync`, ruff, `black --check`, then `pytest` with coverage
-- [x] **T0.5.2** A separate manual workflow runs `-m network` with secrets, for later use. Written but not run (deferred D1).
+- [x] **T0.5.2** A separate manual workflow runs `-m network` with secrets, for later use. Written but not run (deferred D1; see T0.6.5).
 - [x] **T0.5.3** Check whether `import book_loader.core.adobe.libadobe` works on Linux, because of the `oscrypto`/OpenSSL 3 risk (REFACTOR_PLAN §16). **Deferred (D3):** no Linux system is available, so record the result as "not checked".
   - Result, 2026-09-29: **not checked** (no Linux system). The T1.3 decision to replace `oscrypto` with a shim makes this check moot for the new code; D3 checks the shim on Linux instead.
 - [x] **T0.5.4** A local check script, `uv run python tests/tools/check.py`. It runs `uv sync --locked`, ruff, `black --check`, pyright (from Phase 2) and `pytest` with coverage, first under Python 3.11 and then under 3.14, and stops at the first failure. The CI workflow in T0.5.1 runs the same script, so both stay in step.
 - **Tests:** the local check passes on Windows under both Python versions. A deliberate ruff error makes it fail, and is then reverted.
 
 **Phase 0 exit:** the local check passes on Windows under Python 3.11 and 3.14, and the CI workflows are written but not run. The golden files (`redact`, `safe_filename`, `kobo_keys`, `help_options`) and the v0 fixtures are committed. The four strict-xfail tests (restore location, `--to-pdf` data loss, Kobo WAL, Kobo BOM) are present. All tests block network access except to this machine unless marked `network` or `live`.
+
+### T0.6 Switch on CI in the fork (M)
+Added 2026-09-29, after Phase 2 was merged: GitHub Actions is available in the fork `SanaRinomi/book_loader` (REFACTOR_PLAN §2.1). This covers most of the deferred items (see [Checks on GitHub Actions](#checks-on-github-actions)). It is its own PR, on the branch `refactor/p0-ci`, and it lands before Phase 3.
+- [ ] **T0.6.1** Switch on `ci.yml`:
+  - triggers: `push` to `main`, `pull_request`, and `workflow_dispatch`
+  - update `actions/checkout` and `astral-sh/setup-uv` to their current major versions
+  - keep the matrix: `windows-latest`, `macos-latest` and `ubuntu-latest`, each with Python 3.11 and 3.14, and `fail-fast: false`
+  - `permissions: contents: read`, a `timeout-minutes` on the job, and a `concurrency` group per branch with `cancel-in-progress`, so a new push stops the older run
+  - replace the header comment that says the workflow isn't run
+- [ ] **T0.6.2** First run: fix what fails on each runner, one commit per cause, naming the D item. Expected:
+  - `posix_only` and `macos_only` tests run for the first time and may be wrong themselves (D2); file modes (D4); real paths (D5); locks and stale-lock detection (D8)
+  - on Ubuntu, `oscrypto` 1.3.0 may fail to load under OpenSSL 3. The comparison tests must then skip, as they do when it can't be imported, and the shim tests must still run and pass (D3, CI part)
+  - the vendor manifest guard on LF checkouts (T1.4)
+  - `windows_only` tests on Windows Server, which isn't the Windows 11 of the local check: the access-list check in `private_dir` and the Known Folder lookup
+  - a test that fails only on CI is fixed, not skipped for CI
+- [ ] **T0.6.3** Cross-file-system move on Linux (D8): a `posix_only` test that moves a file between `tmp_path` and `/dev/shm` (a tmpfs on the Ubuntu runner), skipping when that folder is missing or on the same device, so `safe_move`'s copy path runs without being forced.
+- [ ] **T0.6.4** OS output capture (D6): a manual workflow, `os-output.yml`, that saves `ifconfig -a` on the macOS runner; `/sys/class/net/*/address` with the interface names, and `ip -o link`, on Ubuntu; and `getmac /fo csv /nh /v` and `Get-NetAdapter` on Windows Server. It uploads them as one artifact.
+  - Add the captures to `fixtures/os_output/` next to the hand-written files. Keep the hand-written files for cases the runners lack, such as disconnected adapters, bridges and Wi-Fi, and say so in `fixtures/os_output/README.md`.
+  - The addresses belong to throwaway VMs, so committing them is safe.
+- [ ] **T0.6.5** Network workflow (`network.yml`, T0.5.2): it stays manual. Once the first `network` test exists, add the `BL_TEST_ADOBE_ID_*` secrets in the fork's settings and run it once (D1). Update its header comment now.
+- [ ] **T0.6.6** Optional, the user decides: a ruleset on the fork's `main` that makes the six CI jobs required checks, so a PR can't be merged while one fails.
+- [ ] **T0.6.7** Docs and comments: CLAUDE.md, and the comments that call the CI parts of D2 to D8 deferred: `tests/unit/infra/test_fs.py`, `test_known_dirs.py`, `test_locks.py`, `test_paths.py`, `fixtures/os_output/README.md` and `adobe/_vendor/PATCHES.md` (not in the vendor manifest). Once Ubuntu passes, update the changelog line saying the PKCS#12 reader was tested on Windows only.
+- **Tests:** all six jobs pass on the T0.6 PR, and the PR links the run. The local check still passes on Windows.
 
 ---
 
@@ -247,7 +273,7 @@ Decided 2026-09-29: replace `oscrypto` with a shim (REFACTOR_PLAN decision 21, �
   - `sign_node` on a synthetic activation and device key gives the same signature through the shim as through `oscrypto`, and the signature verifies with the certificate's public key
   - `libadobe` imports and signs with `oscrypto` blocked (`sys.modules["oscrypto"] = None`)
   - `live`, local only: the real `activation.xml` on this machine gives identical results through the shim and `oscrypto`. Nothing from it is written to disk or committed
-  - the Linux run is deferred (D3)
+  - the Linux run is on the Ubuntu runner from T0.6 (D3); a real ACSM on Linux stays deferred
 - **Result, 2026-09-29.** Everything above is done. Findings, and how the tests differ from the plan:
   - The real `activation.xml` uses a SHA-1 MAC with 100,000 iterations, a 3DES key bag and an RC2-40 certificate bag. Parsing it takes about 0.46 s with either the shim or `oscrypto`.
   - **`oscrypto` bug on Windows.** There, `oscrypto` derives PKCS#12 keys in pure Python, and gets keys longer than one hash wrong when the first hash block starts with a zero byte. For a 3DES key that happens for about one salt in 465, measured over 20,000 salts. `oscrypto` then can't decrypt the key ("NTSTATUS error 0xC000003E"). The shim matches OpenSSL's `PKCS12KDF` (test vectors), so it also fixes this. It has a changelog "Fixed" entry.
@@ -314,7 +340,7 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
 - [x] **T2.4.1** Global folder per OS: `%LOCALAPPDATA%\book-loader\` on Windows (Known Folder API when the variable is unset), `~/.config/book-loader/` elsewhere. The auth folder is `adobe\` on Windows and `.adobe/` elsewhere. Add `logs/`, `backups/`, `config.toml` and `state.json` paths.
 - [x] **T2.4.2** Old Windows location `~\.config\book-loader\.adobe\`: returned as the auth folder only when the new one doesn't exist and the old one does, with a flag so the CLI can show the notice.
 - **Tests:**
-  - fake environments for Windows, macOS and Linux, including `LOCALAPPDATA` unset. The OS and environment are passed in, not read from the host, so all three run on Windows. Real macOS and Linux checks are deferred (D5).
+  - fake environments for Windows, macOS and Linux, including `LOCALAPPDATA` unset. The OS and environment are passed in, not read from the host, so all three run on Windows. From T0.6 the real macOS and Linux environments are checked on the runners (D5).
   - the old-location fallback when only the old folder exists, when both exist, and when neither does
   - resolving paths never creates folders
 
@@ -348,7 +374,7 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
 - [x] **T2.7.1** `atomic_write(path)`: write to a temp file in the same folder, then `os.replace`. Text is written with `\n` line endings on every OS, so settings and records don't change when a library moves between systems.
 - [x] **T2.7.2** `unique_path(path)`: adds ` (2)`, ` (3)` and so on.
 - [x] **T2.7.3** `private_dir(path)`:
-  - creates the folder with mode `0700` on POSIX (`posix_only` test, deferred D4)
+  - creates the folder with mode `0700` on POSIX (`posix_only` test, on CI from T0.6, D4)
   - on Windows, checks that no broader permissions were added (read-only check): the folder's access list may not allow Everyone, Interactive users, Authenticated Users, Users, Guests or Anonymous Logon, matched by SID so the check works in any Windows language. It returns a warning naming them.
   - only called by code that writes
 - [x] **T2.7.4** `retry_locked(fn)`: on Windows, retries `PermissionError` and sharing violations with backoff for about 2 seconds, then raises `LockedError` naming the file.
@@ -374,7 +400,7 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - two locks: the second waits and then fails
   - a stale lock from a dead process ID is taken over
   - the lock is released on an exception
-  - a real subprocess holds a lock (both OSes; the POSIX run and stale-lock detection on POSIX are deferred, D8)
+  - a real subprocess holds a lock (both OSes; the POSIX run and stale-lock detection on POSIX are on CI from T0.6, D8)
 
 ### T2.9 `infra/secrets.py` (S)
 - [x] **T2.9.1** `resolve_secret(kind, env, file, use_stdin, legacy_value, prompter, interactive, stdin_taken_by)`:
@@ -442,7 +468,7 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - Linux: the `XDG_DOWNLOAD_DIR` entry in `~/.config/user-dirs.dirs` (in `$XDG_CONFIG_HOME` when that is set, as the xdg-user-dirs tools do)
   - macOS and fallback: `~/Downloads`
   - an override from settings (`~` means the home folder)
-- **Tests:** a parser test for `user-dirs.dirs`; `windows_only`, the Known Folder result is an existing folder; the override wins. A real Linux desktop and macOS are deferred (D5).
+- **Tests:** a parser test for `user-dirs.dirs`; `windows_only`, the Known Folder result is an existing folder; the override wins. macOS and a Linux server without `user-dirs.dirs` are checked on CI from T0.6; a real Linux desktop is deferred (D5).
 
 ### T2.14 Type checking (S)
 - [x] **T2.14.1** Add a pyright config that checks `domain`, `infra` and each new package as it appears. The old `core`, `utils` and `cli.py` are excluded until they're deleted, and `_vendor` is always excluded. Add it to the local check (T0.5.4), which the CI workflow also runs. The config is `[tool.pyright]` in `pyproject.toml`: it checks all of `src/book_loader` (so a new package is checked from its first file) and the tests, leaving out the characterization tests of the old code. Libraries without type information (`asn1crypto`) count as untyped (`useLibraryCodeForTypes = false`), and `lxml-stubs` joins the dev group for `lxml`.
@@ -592,7 +618,8 @@ It comes first because T3.7 and Phase 11 use it.
   - DRM-free books are copied
   - names come from `infra/names`
 - **Tests:**
-  - MAC parsers against the fixtures in `fixtures/os_output/`, including disconnected adapters and localized `getmac` output. The `ifconfig` and `/sys` fixtures are hand-written until real captures exist (deferred D6).
+  - MAC parsers against the fixtures in `fixtures/os_output/`, including disconnected adapters and localized `getmac` output. The `ifconfig` and `/sys` fixtures include the runner captures from T0.6.4 (D6).
+  - on each CI runner, the provider for the host OS reads the real adapters and finds at least one address (`macos_only`, `posix_only` for Linux, `windows_only`)
   - key vectors match `golden/kobo_keys.json`
   - `library` tests on the T0.4.3 builder, including the WAL variant: a change still in the WAL is visible, and the fallback path is exercised
   - the temp database is gone after an exception
@@ -614,12 +641,17 @@ It comes first because T3.7 and Phase 11 use it.
   - warnings go through the reporter
 - [ ] **T4.3.3** Split HTML building from rendering, so HTML can be tested without WeasyPrint.
 - [ ] **T4.3.4** `calibre_engine.py`: discovery on `PATH`, then the standard install folders, then `calibre_path`; runs `ebook-convert`; `CalledProcessError` becomes `ConversionFailedError` with the tail of stderr.
+- [ ] **T4.3.5** A `conversion` job in `ci.yml` (D10), on Python 3.14 only:
+  - installs WeasyPrint's native libraries (`apt` on Ubuntu, `brew install pango` on macOS; on Windows only if a simple install exists, otherwise Windows keeps the local run) and Calibre (`apt install calibre`, `brew install --cask calibre`, `choco install calibre`)
+  - sets `BL_TEST_REQUIRE_WEASYPRINT=1`, so `weasyprint` tests fail instead of skipping when the libraries are missing
+  - runs the `weasyprint` tests and Calibre discovery against the real install, which on macOS is `/Applications/calibre.app`
+  - Calibre on a runner has no display; set `QT_QPA_PLATFORM=offscreen` if `ebook-convert` needs it
 - **Tests:**
   - HTML building: spine order, CSS kept, `<script>` removed, title escaping (`<b>&"'`), images rewritten
   - an import failure simulated by monkeypatching `import`
   - `weasyprint` marker: a real PDF is produced from a small EPUB
   - Calibre discovery with fake folders on each OS layout, and a subprocess fake for success and failure
-  - WeasyPrint and Calibre on real macOS and Linux installs are deferred (D10)
+  - WeasyPrint and Calibre installed on the macOS and Linux runners, in the T4.3.5 job (D10)
 
 **Phase 4 exit:** every adapter layer is complete and tested. The old code is still in use.
 
@@ -783,11 +815,11 @@ Run and record in the PR, on Windows (including Git Bash). The same checks on ma
   - `--json` and logs
   - masked passwords
   - the fixes from REFACTOR_PLAN §6
-  - a note that this release was tested on Windows only, and that macOS and Linux users may hit problems (REFACTOR_PLAN §2.1)
+  - a note that this release was tested by hand on Windows only, and that the automated tests also pass on macOS and Linux CI runners. It names what no real macOS or Linux machine has checked yet, such as Kobo on macOS and interactive prompts, so users there may hit problems (REFACTOR_PLAN §2.1, §18)
 - [ ] **T6.7.2** README and README.zh-TW sections for the changed behaviour (the full rewrite comes in Phase 12).
-  - a Linux note (T1.3): book-loader no longer needs `oscrypto`. The 0.1.0 failure on some Linux systems with OpenSSL 3 ("Error detecting the version of libcrypto") can't occur any more, because a pure-Python PKCS#12 reader replaces it. That reader is tested on Windows against `oscrypto`, and on Linux only once D3 is done
+  - a Linux note (T1.3): book-loader no longer needs `oscrypto`. The 0.1.0 failure on some Linux systems with OpenSSL 3 ("Error detecting the version of libcrypto") can't occur any more, because a pure-Python PKCS#12 reader replaces it. That reader is tested on Windows against `oscrypto` and on the Ubuntu CI runner; a real ACSM on Linux is checked only once D3 is done
 - [ ] **T6.7.3** Bump the version and tag `v0.2.0`.
-- **Tests:** the local check passes on the tag, and the Windows part of T6.5 is complete.
+- **Tests:** the local check and CI pass on the tagged commit, and the Windows part of T6.5 is complete.
 
 ---
 
@@ -873,7 +905,7 @@ Finished after Phase 8: changelog entries for pending, watch, batch and loans.
 - **Tests:** the pipeline runs with and without the step, in the right order; the standalone command never changes its input; `--no-optimize` wins over config (tested again in Phase 9).
 
 ### T8.3 Release 0.3.0 (S)
-- [ ] Changelog and README sections, manual checks of watched downloads and batch on Windows, and tag `v0.3.0`. The changelog repeats the Windows-only testing note while deferred items remain.
+- [ ] Changelog and README sections, manual checks of watched downloads and batch on Windows, and tag `v0.3.0`. The changelog repeats the note on what was checked on macOS and Linux only on CI runners, while deferred items remain.
 
 ---
 
@@ -962,17 +994,18 @@ Finished after Phase 8: changelog entries for pending, watch, batch and loans.
   - authorization handling: keep or replace (backing up first), flag encrypted copies whose key doesn't match, and choose where `global-auth` goes
   - names made safe for the OS, with any new name recorded
   - every file's hash checked, then a summary
+- [ ] **T10.2.3** A `cross-os-backup` job pair in `ci.yml` (D11). A job on the macOS runner builds a library with a synthetic authorization, NFD names, `:` in names and a case collision, backs it up with the `full` and `restorable` presets, and uploads the archives as an artifact. A job on the Windows runner downloads them, restores them and checks every hash. The same runs in reverse, from Windows to macOS.
 - **Tests:**
   - round trip of each preset (hash-identical)
   - restoring some parts or some books
   - merging with conflicts and skips
   - a mismatched key is flagged
-  - a macOS-made archive with NFD and `:` in names restores on Windows (simulated, plus `windows_only` real; an archive really made on macOS is deferred, D11)
+  - a macOS-made archive with NFD and `:` in names restores on Windows (simulated, plus `windows_only` real; an archive really made on macOS is restored by the T10.2.3 job, D11)
   - a case collision
   - a tampered archive is rejected before anything is written
 
 ### T10.3 Manual cross-device check (S)
-- [ ] Back up a library on one machine (`full` and `restorable`), restore on a second machine, `process` a new ACSM there with the restored authorization, and `loan return` there. Record the result. During the refactor both machines run Windows; the check with a different OS is deferred (D11).
+- [ ] Back up a library on one machine (`full` and `restorable`), restore on a second machine, `process` a new ACSM there with the restored authorization, and `loan return` there. Record the result. During the refactor both machines run Windows; the check with a different OS is deferred (D11). T10.2.3 covers the backup and restore across OSes on CI, but not `process` or `loan return`, which need a real account.
 
 ---
 
@@ -1015,12 +1048,13 @@ Finished after Phase 8: changelog entries for pending, watch, batch and loans.
   - Kobo no longer macOS only
   - the Kobo cursor rule kept
   - test commands and markers
+  - CI in the fork: the workflows, the runners, and what they don't cover
 - [ ] **T12.1.3** Replace `TESTING.md` with a "Testing" section (markers, live tests, fixtures).
 - [ ] **T12.1.4** A migration guide from 0.1.0: what moves, the `migrate` steps, scripts affected by flag changes.
 - **Tests:** a docs check that every command and option mentioned in the README exists (parsed from the README code blocks and compared with the Click tree).
 
 ### T12.2 Release 0.4.0 (S)
-- [ ] Final changelog, manual checks from T6.5, T9 and T10.3 on Windows, and tag `v0.4.0`. The checks on another OS are deferred (D12); until they're done, the changelog keeps the Windows-only testing note.
+- [ ] Final changelog, manual checks from T6.5, T9 and T10.3 on Windows, and tag `v0.4.0`. CI passes on the tagged commit. The manual checks on another OS are deferred (D12); until they're done, the changelog keeps the note on what was checked only on CI runners.
 
 ---
 
@@ -1033,6 +1067,7 @@ P0 ─► P1 ─► P2 ─┬─► P3 (T3.1 before T3.7) ─┐
                                                      │
                                                      └─► P9 ─► P10 ─► P11 ─► P12 ─► release 0.4.0
 ```
+- T0.6 (switch on CI) was added after Phase 2 and lands before Phases 3 and 4, so their PRs run on all three runners.
 - Phases 3 and 4 can run in parallel after Phase 2.
 - Phase 9 needs Phase 7's `--force` logic (T7.3.4) and Phase 8's optimize step for complete library behaviour. They can be started in parallel and joined before T9.3 is finished.
 - T2.11 (archive) must be finished before T3.8, and T3.8 before T5.2.
@@ -1054,18 +1089,26 @@ P0 ─► P1 ─► P2 ─┬─► P3 (T3.1 before T3.7) ─┐
 
 ---
 
-## Deferred until after the refactor
-Everything here needs macOS, Linux or a remote CI pipeline, and none is available during the refactor (REFACTOR_PLAN §2.1, §18). Run these checks once the platforms are available. **Any of them may turn up bugs that need debugging or fixing**, because the code for those systems was only tested with fakes. For each fix, add a test that runs on Windows where possible, and a changelog entry. Remove the Windows-only note from the changelog once every item is done.
+## Checks on GitHub Actions
+Added 2026-09-29. These were deferred items until GitHub Actions became available in the fork (REFACTOR_PLAN §2.1, §18). They now run on the hosted runners during the refactor, in T0.6 or in the task named. **Any of them may turn up bugs that need debugging or fixing**, because until then the code for those systems was only tested with fakes. For each fix, add a test that runs on Windows where possible, and a changelog entry. Tick an item when its CI job passes.
 
-- [ ] **D1 CI.** From T0.5.1, T0.5.2 and T2.14. Switch on `ci.yml` and run the whole suite on Windows, macOS and Linux with Python 3.11 and 3.14. Run the manual network workflow once. *Possible fixes:* any behaviour the fakes didn't model, path separators, line endings, encodings, and temp-folder handling.
-- [ ] **D2 Fixtures and platform-only tests.** From T0.2 and every `macos_only`/`posix_only` test. Run the fixture smoke tests and all skipped platform tests for the first time. *Possible fixes:* `HOME` handling in `tmp_home`, and platform tests that never ran and may be wrong themselves.
-- [ ] **D3 PKCS#12 shim on Linux.** From T0.5.3, T1.3 and T1.5. On a current Linux distribution with OpenSSL 3 and without `oscrypto` installed, import `libadobe`, sign a test node, and run `auth create --anonymous` and `process` with a real ACSM. *Possible fixes:* the shim is pure Python, so problems are unlikely; any that appear are in the shim's algorithm support. Once this passes, decide whether to drop `oscrypto` from the dev group and retire the comparison tests.
-- [ ] **D4 File permissions.** From T0.4.5, T2.7.3, T2.11, T3.4.3, T3.5, T5.2, T9.2.1 and T11.2.2. On macOS and Linux, check that private folders are `0700` and that key-holding files (pending records, loans, backups) are `0600`, including files created before the folder existed. *Possible fixes:* the umask, missing `chmod` calls, and modes lost by atomic writes.
-- [ ] **D5 Paths and known folders.** From T2.4 and T2.13. Check `~/.config/book-loader/` and `.adobe/` on macOS and Linux, with `BOOK_LOADER_AUTH_DIR` and `--auth-dir`. Check the Downloads lookup on a Linux desktop with `XDG_DOWNLOAD_DIR`, on a Linux server without it, and on macOS. *Possible fixes:* `user-dirs.dirs` quoting and `$HOME` expansion.
-- [ ] **D6 MAC address parsers.** From T0.4.3 and T4.2.2. Capture real `ifconfig -a` output on macOS and `/sys/class/net/*/address` on Linux. Replace the hand-written fixtures and rerun the parser tests. *Possible fixes:* the parsers, for unexpected adapter types, bridges, and virtual interfaces.
-- [ ] **D7 Kobo on macOS.** From T4.2 and T6.5. Run `kobo list` and `kobo dedrm` against a real Kobo Desktop on macOS, the only platform Kobo works on in 0.1.0. Check that output names and bytes match what 0.1.0 produces. *Possible fixes:* the default library path, MAC reading, the SQLite copy of a database Kobo Desktop has open, and name normalisation on APFS.
-- [ ] **D8 Locks and file moves.** From T2.7 and T2.8. On POSIX, check that stale-lock detection spots a dead process, a real subprocess holds a lock, `atomic_write` keeps the old file on failure, and `safe_move` works between file systems. *Possible fixes:* process-liveness checks and `os.replace` across mounts.
-- [ ] **D9 Terminal and prompts.** From T6.2 and T7.2. In the macOS Terminal and a Linux terminal, check Rich output and colours, questionary menus, masked password input, the watched-downloads prompt, and plain output when piped. *Possible fixes:* terminal detection and prompt_toolkit behaviour.
-- [ ] **D10 Conversion.** From T4.3. Run the `weasyprint` tests with the native libraries installed on macOS and Linux. Check that Calibre is found at `/Applications/calibre.app/…` on macOS and on `PATH` on Linux. *Possible fixes:* Calibre discovery and the hint text for missing WeasyPrint libraries.
-- [ ] **D11 Cross-OS backups.** From T10.2 and T10.3. Back up a library on macOS and restore it on Windows, then the reverse, with NFD names, `:` in names, and case collisions. Then `process` an ACSM and `loan return` on the target. *Possible fixes:* name mapping and permissions after restore.
+- [ ] **D1 CI.** From T0.5.1, T0.5.2 and T2.14; done in T0.6.1 and T0.6.5. Switch on `ci.yml` and run the whole suite on Windows, macOS and Linux with Python 3.11 and 3.14. Run the manual network workflow once the first network test exists. *Possible fixes:* any behaviour the fakes didn't model, path separators, line endings, encodings, and temp-folder handling.
+- [ ] **D2 Fixtures and platform-only tests.** From T0.2 and every `macos_only`/`posix_only` test; T0.6.2. Run the fixture smoke tests and every platform test that skips on Windows for the first time. *Possible fixes:* `HOME` handling in `tmp_home`, and platform tests that never ran and may be wrong themselves.
+- [ ] **D3 PKCS#12 shim on Linux, CI part.** From T0.5.3, T1.3 and T1.5; T0.6.2. On the Ubuntu runner, which has OpenSSL 3, import `libadobe` with `oscrypto` blocked, read the fixture PKCS#12 files and sign a test node through the shim. The comparison tests skip if `oscrypto` can't load there. *Possible fixes:* the shim is pure Python, so problems are unlikely; any that appear are in the shim's algorithm support.
+- [ ] **D4 File permissions.** From T0.4.5, T2.7.3, T2.11, T3.4.3, T3.5, T5.2, T9.2.1 and T11.2.2, through each task's `posix_only` tests. On the macOS and Linux runners, check that private folders are `0700` and that key-holding files (pending records, loans, backups) are `0600`, including files created before the folder existed. *Possible fixes:* the umask, missing `chmod` calls, and modes lost by atomic writes.
+- [ ] **D5 Paths and known folders, CI part.** From T2.4 and T2.13; T0.6.2. Check `~/.config/book-loader/` and `.adobe/` on the macOS and Linux runners, with `BOOK_LOADER_AUTH_DIR` and `--auth-dir`. Check the Downloads lookup on macOS, and on the Ubuntu runner, which has no `user-dirs.dirs`, like a Linux server. *Possible fixes:* `$HOME` expansion and the fallback when `user-dirs.dirs` is missing.
+- [ ] **D6 MAC address parsers.** From T0.4.3 and T4.2.2; T0.6.4 and the T4.2 tests. Capture `ifconfig -a` on the macOS runner and `/sys/class/net/*/address` on the Ubuntu runner, add them to the fixtures, and rerun the parser tests. On each runner, also read the host's real adapters. *Possible fixes:* the parsers, for adapter types the hand-written fixtures didn't have. Physical adapters on a real Mac are checked with D7.
+- [ ] **D8 Locks and file moves.** From T2.7 and T2.8; T0.6.2 and T0.6.3. On the POSIX runners, check that stale-lock detection spots a dead process, a real subprocess holds a lock, `atomic_write` keeps the old file on failure, and `safe_move` works between file systems (`/dev/shm` on Ubuntu). *Possible fixes:* process-liveness checks and `os.replace` across mounts.
+- [ ] **D9 Terminal and prompts, CI part.** From T6.2 and T7.2. The runners have no terminal, so the suite there checks, on each OS, that output is plain when piped and that a command needing a prompt stops with a clear message instead of waiting for input. *Possible fixes:* terminal detection.
+- [ ] **D10 Conversion.** From T4.3; T4.3.5. Run the `weasyprint` tests with the native libraries installed on the runners, and check that Calibre is found at `/Applications/calibre.app/…` on macOS and on `PATH` on Linux. *Possible fixes:* Calibre discovery and the hint text for missing WeasyPrint libraries.
+- [ ] **D11 Cross-OS backups, CI part.** From T10.2; T10.2.3. Back up a library on the macOS runner and restore it on the Windows runner, then the reverse, with NFD names, `:` in names, and case collisions. *Possible fixes:* name mapping and permissions after restore.
+
+## Deferred until after the refactor
+These need a person at a real macOS or Linux machine, a real install or a real account, which neither the Windows PC nor the runners provide (REFACTOR_PLAN §2.1, §18). Run them once such a machine is available. **Any of them may turn up bugs that need debugging or fixing.** For each fix, add a test that runs on Windows or CI where possible, and a changelog entry. Remove the note on CI-only testing from the changelog once every item here is done.
+
+- [ ] **D3 PKCS#12 shim on Linux, real account.** From T1.5. On a Linux machine with OpenSSL 3 and without `oscrypto` installed, run `auth create --anonymous` and `process` with a real ACSM. Once this passes, decide whether to drop `oscrypto` from the dev group and retire the comparison tests.
+- [ ] **D5 Downloads on a Linux desktop.** From T2.13. Check the Downloads lookup with a real `XDG_DOWNLOAD_DIR`, including a translated folder name. *Possible fixes:* `user-dirs.dirs` quoting.
+- [ ] **D7 Kobo on macOS.** From T4.2 and T6.5. Run `kobo list` and `kobo dedrm` against a real Kobo Desktop on macOS, the only platform Kobo works on in 0.1.0. Check that output names and bytes match what 0.1.0 produces. *Possible fixes:* the default library path, MAC reading on physical adapters (D6), the SQLite copy of a database Kobo Desktop has open, and name normalisation on APFS.
+- [ ] **D9 Terminal and prompts, interactive.** From T6.2 and T7.2. In the macOS Terminal and a Linux terminal, check Rich output and colours, questionary menus, masked password input, and the watched-downloads prompt. *Possible fixes:* terminal detection and prompt_toolkit behaviour.
+- [ ] **D11 Cross-OS backups, real account.** From T10.3. After restoring a library backed up on another OS, `process` an ACSM and `loan return` on the target. *Possible fixes:* permissions after restore.
 - [ ] **D12 Manual release checks.** From T6.5 and T12.2. Run the whole T6.5 list on macOS or Linux. *Possible fixes:* anything the earlier items missed.

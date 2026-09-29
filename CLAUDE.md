@@ -38,9 +38,12 @@ uv run pytest
 uv run python tests/tools/check.py
 ```
 
-Only Windows is available until the refactor is done, and there is no remote CI
-(REFACTOR_PLAN.md §2.1). Checks needing macOS, Linux or CI are deferred (D1-D12 in
-REFACTOR_ACTION_PLAN.md).
+The only machine to work on is Windows (REFACTOR_PLAN.md §2.1). GitHub Actions runs in
+the fork `SanaRinomi/book_loader` (PRs target its `main`): `ci.yml` runs the same check
+on the hosted `windows-latest`, `macos-latest` and `ubuntu-latest` runners once T0.6
+switches it on. `posix_only`/`macos_only` tests skip locally and run there. Checks that
+need a real macOS/Linux machine, install or account are deferred (the lists at the end
+of REFACTOR_ACTION_PLAN.md, items D1-D12).
 
 ## Architecture Overview
 
