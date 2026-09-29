@@ -432,8 +432,8 @@ Goal: build the foundation pieces, each fully unit-tested. The old code doesn't 
   - a v0 fixture archive from T0.4.4 is read
 
 ### T2.12 Move `redact.py` (S)
-- [ ] **T2.12.1** `git mv utils/redact.py infra/redact.py`. Leave `utils/redact.py` re-exporting it until Phase 6. Point `infra/logging.py` at `.redact` and remove its entry from `TEMPORARY` in `tests/unit/test_layering.py`.
-- [ ] **T2.12.2** Change the import in `libadobe.py` and `libadobeFulfill.py` to `from ...infra.redact import …`: the one allowed vendored edit in this phase. Update `MANIFEST.sha256` and `PATCHES.md`.
+- [x] **T2.12.1** `git mv utils/redact.py infra/redact.py`. Leave `utils/redact.py` re-exporting it until Phase 6. Point `infra/logging.py` at `.redact` and remove its entry from `TEMPORARY` in `tests/unit/test_layering.py`.
+- [x] **T2.12.2** Change the import in `libadobe.py` and `libadobeFulfill.py` to `from ...infra.redact import …`: the one allowed vendored edit in this phase. Update `MANIFEST.sha256` and `PATCHES.md`.
 - **Tests:** the T0.4.1 golden tests are moved to point at `infra.redact`, the characterization suite passes, and the vendor guard passes after the manifest update.
 
 ### T2.13 `infra/known_dirs.py` (S)

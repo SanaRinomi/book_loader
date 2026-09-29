@@ -28,9 +28,7 @@ ALLOWED = {
 }
 
 # Imports allowed for now, each with the task that removes it.
-TEMPORARY = {
-    ("infra/logging.py", "book_loader.utils.redact"),  # T2.12 moves redact.py into infra
-}
+TEMPORARY: set[tuple[str, str]] = set()
 
 
 def imports_of(path: Path) -> set[str]:

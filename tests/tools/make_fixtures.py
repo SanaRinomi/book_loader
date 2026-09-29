@@ -114,7 +114,7 @@ REDACT_TEXTS = [
 
 
 def gen_redact() -> dict[str, bytes]:
-    from book_loader.utils.redact import redact_header, redact_text, redact_url
+    from book_loader.infra.redact import redact_header, redact_text, redact_url
 
     data = {
         "urls": [{"input": u, "output": redact_url(u)} for u in REDACT_URLS],

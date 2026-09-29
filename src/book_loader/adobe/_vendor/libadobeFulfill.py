@@ -16,7 +16,7 @@ import time
 
 from .libadobe import addNonce, sign_node, get_cert_from_pkcs12, sendRequestDocu, sendRequestDocuRC, sendHTTPRequest
 from .libadobe import is_verbose, vprint, report
-from ...utils.redact import redact_url, redact_text, redact_header
+from ...infra.redact import redact_url, redact_text, redact_header
 from .libadobe import get_devkey_path, get_device_path, get_activation_xml_path
 from .libadobe import VAR_VER_SUPP_VERSIONS, VAR_VER_SUPP_CONFIG_NAMES, VAR_VER_HOBBES_VERSIONS
 from .libadobe import VAR_VER_BUILD_IDS, VAR_VER_USE_DIFFERENT_NOTIFICATION_XML_ORDER

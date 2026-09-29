@@ -36,7 +36,7 @@ from pathlib import Path
 from types import TracebackType
 
 from ..domain.errors import LockedError
-from ..utils.redact import redact_text  # moves to infra.redact in T2.12
+from .redact import redact_text
 from .fs import unique_path
 from .locks import Lock
 from .secrets import Secret

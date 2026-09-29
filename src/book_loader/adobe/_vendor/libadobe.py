@@ -19,7 +19,7 @@ import sys, os, hashlib, base64
 import ssl
 import time
 import http.client
-from ...utils.redact import redact_url, redact_text, redact_header
+from ...infra.redact import redact_url, redact_text, redact_header
 try: 
     import urllib.request as ulib
     import urllib.error as uliberror
