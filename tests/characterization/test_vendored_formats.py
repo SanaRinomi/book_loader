@@ -16,8 +16,8 @@ from pathlib import Path
 import pytest
 from lxml import etree
 
-from book_loader.core.adobe import libadobe, libadobeFulfill, libpdf
-from book_loader.core.drm import ineptepub
+from book_loader.adobe._vendor import libadobe, libadobeFulfill, libpdf
+from book_loader.drm._vendor import ineptepub
 from tests.fixtures.builders._random import rsa_key
 from tests.fixtures.builders.adept_epub import build_adept_epub
 from tests.fixtures.builders.adobe_auth import LICENSE_URL, OPERATOR_URL, build_auth_folder

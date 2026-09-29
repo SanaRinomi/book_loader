@@ -301,7 +301,7 @@ def gen_v0() -> dict[str, bytes]:
     import time_machine
 
     from book_loader.cli import backup_auth
-    from book_loader.core.adobe import libadobe, libadobeFulfill
+    from book_loader.adobe._vendor import libadobe, libadobeFulfill
     from book_loader.core.adobe.fulfill import ACSMFulfiller
     from tests.fixtures.builders.adobe_auth import build_auth_folder
 

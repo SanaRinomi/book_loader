@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from book_loader.core.adobe import libadobe
+from book_loader.adobe._vendor import libadobe
 from book_loader.core.adobe.fulfill import ACSMFulfiller
 from tests.fixtures.builders.adobe_auth import build_auth_folder
 

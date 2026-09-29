@@ -59,7 +59,7 @@ class ACSMFulfiller:
         with self._adobe_session(verbose, status):
             info = self._fulfill_acsm(acsm_path)
 
-            from . import libadobeFulfill
+            from ...adobe._vendor import libadobeFulfill
 
             try:
                 output_path = libadobeFulfill.download_book(info, str(output_dir))
@@ -100,8 +100,8 @@ class ACSMFulfiller:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         with self._adobe_session(verbose, status):
-            from . import libadobe
-            from . import libadobeFulfill
+            from ...adobe._vendor import libadobe
+            from ...adobe._vendor import libadobeFulfill
 
             info = self._load_pending(acsm_path)
             if info:
@@ -132,7 +132,7 @@ class ACSMFulfiller:
     def _adobe_session(self, verbose: bool, status: StatusCallback):
         """Point libadobe at this account and route its output: events to `status`,
         its plain prints nowhere unless verbose."""
-        from . import libadobe
+        from ...adobe._vendor import libadobe
 
         libadobe.update_account_path(str(self.account.auth_dir))
         libadobe.set_verbose(verbose)
@@ -154,7 +154,7 @@ class ACSMFulfiller:
             raise ACSMFulfillmentError(f"ACSM file not found: {acsm_path}")
 
         try:
-            from . import libadobeFulfill
+            from ...adobe._vendor import libadobeFulfill
 
             success, result = libadobeFulfill.fulfill(str(acsm_path), do_notify=True)
 
@@ -219,7 +219,7 @@ class ACSMFulfiller:
             return None
         if data.get("key_fingerprint") != self._key_fingerprint():
             # Saved under a different authorization; its license can't be decrypted with this key.
-            from . import libadobe
+            from ...adobe._vendor import libadobe
 
             libadobe.report(
                 "warning",

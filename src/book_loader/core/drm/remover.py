@@ -41,7 +41,7 @@ class DRMRemover:
 
     def _decrypt_epub(self, encrypted_path: Path, output_path: Path, user_key: bytes) -> None:
         """Decrypt EPUB file."""
-        from .ineptepub import decryptBook
+        from ...drm._vendor.ineptepub import decryptBook
 
         result = decryptBook(user_key, str(encrypted_path), str(output_path))
 
@@ -55,7 +55,7 @@ class DRMRemover:
 
     def _decrypt_pdf(self, encrypted_path: Path, output_path: Path, user_key: bytes) -> None:
         """Decrypt PDF file."""
-        from .ineptpdf import decryptBook
+        from ...drm._vendor.ineptpdf import decryptBook
 
         result = decryptBook(user_key, str(encrypted_path), str(output_path))
 

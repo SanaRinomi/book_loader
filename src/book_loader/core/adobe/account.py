@@ -113,8 +113,8 @@ class AdobeAccount:
     def _run_authorization(self, method: str, email: str, password: str, failure: str) -> None:
         try:
             # Set authorization directory path
-            from . import libadobe
-            from . import libadobeAccount
+            from ...adobe._vendor import libadobe
+            from ...adobe._vendor import libadobeAccount
 
             libadobe.update_account_path(str(self.auth_dir))
 

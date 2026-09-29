@@ -54,34 +54,15 @@ build-backend = "hatchling.build"
 line-length = 100
 target-version = ["py311"]
 # Vendored code stays byte-identical to upstream, so it is never reformatted
-# (REFACTOR_PLAN §2). Phase 1 moves it into the _vendor/ folders.
-force-exclude = '''
-/(
-    _vendor/
-  | core/adobe/(libadobe|libadobeAccount|libadobeFulfill|libpdf|customRSA)\.py
-  | core/drm/(ineptepub|ineptpdf|adobekey|utilities|argv_utils|zeroedzipinfo)\.py
-)
-'''
+# (REFACTOR_PLAN §2).
+force-exclude = '/_vendor/'
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-# Vendored code is not linted or fixed (REFACTOR_PLAN §2). Phase 1 moves it into _vendor/.
+# Vendored code is not linted or fixed (REFACTOR_PLAN §2).
 force-exclude = true
-extend-exclude = [
-    "**/_vendor/**",
-    "src/book_loader/core/adobe/libadobe.py",
-    "src/book_loader/core/adobe/libadobeAccount.py",
-    "src/book_loader/core/adobe/libadobeFulfill.py",
-    "src/book_loader/core/adobe/libpdf.py",
-    "src/book_loader/core/adobe/customRSA.py",
-    "src/book_loader/core/drm/ineptepub.py",
-    "src/book_loader/core/drm/ineptpdf.py",
-    "src/book_loader/core/drm/adobekey.py",
-    "src/book_loader/core/drm/utilities.py",
-    "src/book_loader/core/drm/argv_utils.py",
-    "src/book_loader/core/drm/zeroedzipinfo.py",
-]
+extend-exclude = ["**/_vendor/**"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -23,7 +23,7 @@ _LIBADOBE_STATE = (
 @pytest.fixture(autouse=True)
 def _restore_libadobe_state(monkeypatch: pytest.MonkeyPatch) -> None:
     """Undo any change a test makes to libadobe's globals."""
-    from book_loader.core.adobe import libadobe
+    from book_loader.adobe._vendor import libadobe
 
     for name in _LIBADOBE_STATE:
         # Re-setting the current value registers it for restore; raising=False covers

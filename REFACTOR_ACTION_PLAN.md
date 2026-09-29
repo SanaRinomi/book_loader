@@ -189,16 +189,16 @@ No remote CI is available during the refactor (REFACTOR_PLAN §2.1). The local c
 Goal: vendored files move to their final home with only import changes, and are protected against accidental edits.
 
 ### T1.1 Create the target packages (S)
-- [ ] **T1.1.1** Create `src/book_loader/adobe/__init__.py`, `adobe/_vendor/__init__.py`, `drm/__init__.py` and `drm/_vendor/__init__.py`.
-- [ ] **T1.1.2** Move the files with `git mv`:
+- [x] **T1.1.1** Create `src/book_loader/adobe/__init__.py`, `adobe/_vendor/__init__.py`, `drm/__init__.py` and `drm/_vendor/__init__.py`.
+- [x] **T1.1.2** Move the files with `git mv`:
   - `core/adobe/{libadobe,libadobeAccount,libadobeFulfill,libpdf,customRSA}.py` → `adobe/_vendor/`
   - `core/drm/{ineptepub,ineptpdf,adobekey,utilities,argv_utils,zeroedzipinfo}.py` → `drm/_vendor/`
   - in `pyproject.toml`, remove the old-path entries from the ruff and black exclusions (T0.1.6); the `_vendor` patterns already cover the new location
-- [ ] **T1.1.3** Check the vendored imports:
+- [x] **T1.1.3** Check the vendored imports:
   - relative imports among the vendored files still work because the files move together
   - `from ...utils.redact import …` still reaches `book_loader.utils` from the new depth (`adobe/_vendor` is also two levels below `book_loader`)
   - fix anything that doesn't resolve
-- [ ] **T1.1.4** Update the old project code to import from the new paths: `core/adobe/account.py`, `fulfill.py`, `__init__.py`, and `core/drm/remover.py`. The old `core/adobe` and `core/drm` folders keep only project code.
+- [x] **T1.1.4** Update the old project code to import from the new paths: `core/adobe/account.py`, `fulfill.py`, `__init__.py`, and `core/drm/remover.py`. The old `core/adobe` and `core/drm` folders keep only project code.
 - **Tests:**
   - the whole Phase 0 suite passes unchanged
   - `git diff -M --stat` shows the vendored files as renames (at least 95% similar) with only import lines changed

@@ -59,11 +59,12 @@ REFACTOR_ACTION_PLAN.md).
    - Transaction-based: each ACSM can only be fulfilled once per authorization
    - `download()` stores the license: EPUB gets `META-INF/rights.xml`; PDF gets `ADEPT_LICENSE` appended to its `EBX_HANDLER` via `libpdf.py` (without it `ineptpdf` cannot decrypt)
    - Manual download: if the download fails after fulfillment, `ACSMFulfiller` saves the parsed fulfillment to `<auth_dir>/pending/<acsm sha256>.json` (tagged with a key fingerprint) plus a link page; `--downloaded-file` → `fulfill_from_file()` reuses it (or re-fulfills) and calls `libadobeFulfill.apply_license()`
-   - `libadobe.py`, `libadobeFulfill.py`, `libadobeAccount.py`, `libpdf.py` are vendored from [acsm-calibre-plugin](https://github.com/Leseratte10/acsm-calibre-plugin); keep them diffable against upstream
+   - `libadobe.py`, `libadobeFulfill.py`, `libadobeAccount.py`, `libpdf.py`, `customRSA.py` live in `adobe/_vendor/`, vendored from [acsm-calibre-plugin](https://github.com/Leseratte10/acsm-calibre-plugin); keep them diffable against upstream
 
 3. **DRM Removal** (`core/drm/remover.py`): Decrypts ebook using authorization's RSA private key
    - EPUB: `ineptepub.py` (AES-CBC decryption)
    - PDF: `ineptpdf.py` (RSA + AES decryption)
+   - These and their helpers live in `drm/_vendor/`, vendored from DeDRM/noDRM; same rule
 
 4. **Conversion** (`core/conversion/`): Optional EPUB → PDF conversion
    - Two engines: `python` (weasyprint) or `calibre` (external)
